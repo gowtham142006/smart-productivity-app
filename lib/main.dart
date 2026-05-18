@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'routes/app_router.dart';
 
 void main() {
-  runApp(const MyApp());
+  runApp(const ProviderScope(child: MyApp()));
 }
 
 class MyApp extends StatelessWidget {
@@ -9,19 +11,10 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
+    return MaterialApp.router(
       debugShowCheckedModeBanner: false,
-      title: 'AI Productivity App',
-      home: Scaffold(
-        appBar: AppBar(
-          title: const Text('AI Productivity App'),
-        ),
-        body: const Center(
-          child: Text(
-            'Welcome to AI Productivity App',
-          ),
-        ),
-      ),
+      title: 'Smart Productivity App',
+      routerConfig: appRouter,
     );
   }
 }
