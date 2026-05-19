@@ -9,12 +9,48 @@ class HomeScreen extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(title: const Text('Smart Productivity App')),
 
-      body: Center(
-        child: ElevatedButton(
-          onPressed: () {
-            context.go('/chat');
-          },
-          child: const Text('Go to Chat'),
+      body: Padding(
+        padding: const EdgeInsets.all(16),
+
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+
+          children: [
+            const Text(
+              'Hello Gowtham 👋',
+              style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+            ),
+
+            const SizedBox(height: 20),
+
+            Container(
+              padding: const EdgeInsets.all(16),
+
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(16),
+              ),
+
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+
+                children: [
+                  const Text(
+                    'AI Chat',
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  ),
+
+                  IconButton(
+                    onPressed: () {
+                      context.go('/chat');
+                    },
+
+                    icon: const Icon(Icons.arrow_forward),
+                  ),
+                ],
+              ),
+            ),
+          ],
         ),
       ),
 
