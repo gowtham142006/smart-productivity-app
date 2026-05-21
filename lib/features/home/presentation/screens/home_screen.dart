@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../shared/widgets/dashboard_card.dart';
+import '../../../../core/theme/text_styles.dart';
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
@@ -17,16 +18,11 @@ class HomeScreen extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text(
-                'Hello Gowtham 👋',
-                style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
-              ),
-
-              const SizedBox(height: 8),
+              const Text('Hello Gowtham 👋', style: AppTextStyles.heading),
 
               const Text(
                 'Stay productive today',
-                style: TextStyle(fontSize: 16, color: Colors.grey),
+                style: AppTextStyles.subtitle,
               ),
 
               const SizedBox(height: 24),

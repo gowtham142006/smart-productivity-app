@@ -53,7 +53,7 @@ class DashboardCard extends StatelessWidget {
               ],
             ),
 
-            Icon(icon),
+            Icon(Icons.chat, color: Colors.blue),
           ],
         ),
       ),
