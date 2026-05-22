@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../../shared/widgets/dashboard_card.dart';
 import '../../../../core/theme/text_styles.dart';
+import '../../../../shared/widgets/custom_button.dart';
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
@@ -55,6 +56,12 @@ class HomeScreen extends StatelessWidget {
                 icon: Icons.note,
                 onTap: () {
                   context.go('/notes');
+                },
+              ),
+              CustomButton(
+                text: 'Go to Login',
+                onPressed: () {
+                  context.go('/login');
                 },
               ),
             ],
