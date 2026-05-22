@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 import '../../../../shared/widgets/custom_textfield.dart';
+import 'package:go_router/go_router.dart';
 
-class LoginScreen extends StatelessWidget {
-  const LoginScreen({super.key});
+class SignUpScreen extends StatelessWidget {
+  const SignUpScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -45,14 +46,14 @@ class LoginScreen extends StatelessWidget {
                         ),
                         const SizedBox(height: 16),
                         Text(
-                          'Welcome back',
+                          'Create an account',
                           textAlign: TextAlign.center,
                           style: Theme.of(context).textTheme.headlineMedium
                               ?.copyWith(fontWeight: FontWeight.w700),
                         ),
                         const SizedBox(height: 8),
                         Text(
-                          'Sign in to continue to your workspace.',
+                          'Sign up to get started.',
                           textAlign: TextAlign.center,
                           style: Theme.of(context).textTheme.bodyMedium
                               ?.copyWith(color: colorScheme.onSurfaceVariant),
@@ -77,8 +78,15 @@ class LoginScreen extends StatelessWidget {
                           height: 52,
                           child: ElevatedButton(
                             onPressed: () {},
-                            child: const Text('Login'),
+                            child: const Text('Sign Up'),
                           ),
+                        ),
+                        TextButton(
+                          onPressed: () {
+                            context.go('/login');
+                          },
+
+                          child: const Text('Already have an account?'),
                         ),
                       ],
                     ),

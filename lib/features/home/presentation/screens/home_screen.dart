@@ -64,6 +64,13 @@ class HomeScreen extends StatelessWidget {
                   context.go('/login');
                 },
               ),
+              TextButton(
+                onPressed: () {
+                  context.go('/signup');
+                },
+
+                child: const Text('Create an account'),
+              ),
             ],
           ),
         ),
