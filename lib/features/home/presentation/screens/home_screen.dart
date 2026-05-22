@@ -58,6 +58,7 @@ class HomeScreen extends StatelessWidget {
                   context.go('/notes');
                 },
               ),
+              const SizedBox(height: 16),
               CustomButton(
                 text: 'Go to Login',
                 onPressed: () {

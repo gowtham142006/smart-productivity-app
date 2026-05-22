@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../../../shared/widgets/custom_textfield.dart';
+import 'package:go_router/go_router.dart';
 
 class LoginScreen extends StatelessWidget {
   const LoginScreen({super.key});
@@ -79,6 +80,13 @@ class LoginScreen extends StatelessWidget {
                             onPressed: () {},
                             child: const Text('Login'),
                           ),
+                        ),
+                        TextButton(
+                          onPressed: () {
+                            context.go('/forgot-password');
+                          },
+
+                          child: const Text('Forgot Password?'),
                         ),
                       ],
                     ),
