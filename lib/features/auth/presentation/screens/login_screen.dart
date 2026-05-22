@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../../../shared/widgets/custom_textfield.dart';
 import 'package:go_router/go_router.dart';
+import '../../../../services/auth_service.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -11,6 +12,11 @@ class LoginScreen extends StatefulWidget {
 
 class _LoginScreenState extends State<LoginScreen> {
   bool isHidden = true;
+  final emailController = TextEditingController();
+
+  final passwordController = TextEditingController();
+  final authService = AuthService();
+
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
@@ -66,9 +72,10 @@ class _LoginScreenState extends State<LoginScreen> {
                         ),
                         const SizedBox(height: 10),
 
-                        const CustomTextField(
+                        CustomTextField(
                           hintText: 'Email',
                           icon: Icons.email_outlined,
+                          controller: emailController,
                         ),
 
                         const SizedBox(height: 16),
@@ -77,7 +84,7 @@ class _LoginScreenState extends State<LoginScreen> {
                           hintText: 'Password',
                           icon: Icons.lock_outline,
                           obscureText: isHidden,
-
+                          controller: passwordController,
                           suffixIcon: IconButton(
                             icon: Icon(
                               isHidden
@@ -97,7 +104,23 @@ class _LoginScreenState extends State<LoginScreen> {
                         SizedBox(
                           height: 52,
                           child: ElevatedButton(
-                            onPressed: () {},
+                            onPressed: () async {
+                              try {
+                                await authService.signIn(
+                                  email: emailController.text,
+                                  password: passwordController.text,
+                                );
+
+                                debugPrint('Login Success');
+
+                                if (context.mounted) {
+                                  context.go('/');
+                                }
+                              } catch (e) {
+                                debugPrint(e.toString());
+                              }
+                            },
+
                             child: const Text('Login'),
                           ),
                         ),

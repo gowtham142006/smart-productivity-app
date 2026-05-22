@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../../../shared/widgets/custom_textfield.dart';
 import 'package:go_router/go_router.dart';
+import '../../../../services/auth_service.dart';
 
 class SignUpScreen extends StatefulWidget {
   const SignUpScreen({super.key});
@@ -12,6 +13,10 @@ class SignUpScreen extends StatefulWidget {
 class _SignUpScreenState extends State<SignUpScreen> {
   bool isHidden = true;
 
+  final emailController = TextEditingController();
+
+  final passwordController = TextEditingController();
+  final authService = AuthService();
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
@@ -67,9 +72,10 @@ class _SignUpScreenState extends State<SignUpScreen> {
                         ),
                         const SizedBox(height: 10),
 
-                        const CustomTextField(
+                        CustomTextField(
                           hintText: 'Email',
                           icon: Icons.email_outlined,
+                          controller: emailController,
                         ),
 
                         const SizedBox(height: 16),
@@ -78,7 +84,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
                           hintText: 'Password',
                           icon: Icons.lock_outline,
                           obscureText: isHidden,
-
+                          controller: passwordController,
                           suffixIcon: IconButton(
                             icon: Icon(
                               isHidden
@@ -98,7 +104,23 @@ class _SignUpScreenState extends State<SignUpScreen> {
                         SizedBox(
                           height: 52,
                           child: ElevatedButton(
-                            onPressed: () {},
+                            onPressed: () async {
+                              try {
+                                await authService.signUp(
+                                  email: emailController.text,
+                                  password: passwordController.text,
+                                );
+
+                                debugPrint('Signup Success');
+
+                                if (context.mounted) {
+                                  context.go('/');
+                                }
+                              } catch (e) {
+                                debugPrint(e.toString());
+                              }
+                            },
+
                             child: const Text('Sign Up'),
                           ),
                         ),
