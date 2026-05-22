@@ -2,8 +2,15 @@ import 'package:flutter/material.dart';
 import '../../../../shared/widgets/custom_textfield.dart';
 import 'package:go_router/go_router.dart';
 
-class SignUpScreen extends StatelessWidget {
+class SignUpScreen extends StatefulWidget {
   const SignUpScreen({super.key});
+
+  @override
+  State<SignUpScreen> createState() => _SignUpScreenState();
+}
+
+class _SignUpScreenState extends State<SignUpScreen> {
+  bool isHidden = true;
 
   @override
   Widget build(BuildContext context) {
@@ -67,10 +74,24 @@ class SignUpScreen extends StatelessWidget {
 
                         const SizedBox(height: 16),
 
-                        const CustomTextField(
+                        CustomTextField(
                           hintText: 'Password',
                           icon: Icons.lock_outline,
-                          obscureText: true,
+                          obscureText: isHidden,
+
+                          suffixIcon: IconButton(
+                            icon: Icon(
+                              isHidden
+                                  ? Icons.visibility_off
+                                  : Icons.visibility,
+                            ),
+
+                            onPressed: () {
+                              setState(() {
+                                isHidden = !isHidden;
+                              });
+                            },
+                          ),
                         ),
                         const SizedBox(height: 16),
 
