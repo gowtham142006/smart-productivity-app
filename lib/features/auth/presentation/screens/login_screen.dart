@@ -114,7 +114,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                 debugPrint('Login Success');
 
                                 if (context.mounted) {
-                                  context.go('/');
+                                  context.go('/home');
                                 }
                               } catch (e) {
                                 debugPrint(e.toString());

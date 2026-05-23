@@ -114,7 +114,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
                                 debugPrint('Signup Success');
 
                                 if (context.mounted) {
-                                  context.go('/');
+                                  context.go('/home');
                                 }
                               } catch (e) {
                                 debugPrint(e.toString());
