@@ -18,13 +18,13 @@ class _SplashScreenState extends State<SplashScreen> {
   }
 
   Future<void> checkAuth() async {
-    await Future.delayed(const Duration(seconds: 2));
+    await Future.delayed(const Duration(seconds: 1));
 
-    final user = Supabase.instance.client.auth.currentUser;
+    final session = Supabase.instance.client.auth.currentSession;
 
     if (!mounted) return;
 
-    if (user != null) {
+    if (session != null) {
       context.go('/home');
     } else {
       context.go('/login');
