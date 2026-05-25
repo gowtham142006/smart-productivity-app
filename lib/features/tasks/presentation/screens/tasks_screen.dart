@@ -65,7 +65,10 @@ class _TasksScreenState extends State<TasksScreen> {
 
                   description: descriptionController.text,
                 );
-                await fetchTasks(); // Refresh the task list
+                await fetchTasks();
+                titleController.clear();
+
+                descriptionController.clear(); // Refresh the task list
               },
 
               child: const Text('Add Task'),
@@ -84,6 +87,15 @@ class _TasksScreenState extends State<TasksScreen> {
                       title: Text(task.title),
 
                       subtitle: Text(task.description),
+                      trailing: IconButton(
+                        icon: const Icon(Icons.delete),
+
+                        onPressed: () async {
+                          await taskService.deleteTask(task.id);
+
+                          await fetchTasks();
+                        },
+                      ),
                     ),
                   );
                 },

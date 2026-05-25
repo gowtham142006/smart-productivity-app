@@ -30,4 +30,8 @@ class TaskService {
 
     return response;
   }
+
+  Future<void> deleteTask(String taskId) async {
+    await supabase.from('tasks').delete().eq('id', taskId);
+  }
 }
