@@ -84,9 +84,26 @@ class _TasksScreenState extends State<TasksScreen> {
 
                   return Card(
                     child: ListTile(
-                      title: Text(task.title),
+                      title: Text(
+                        task.title,
+
+                        style: TextStyle(
+                          decoration: task.isCompleted
+                              ? TextDecoration.lineThrough
+                              : TextDecoration.none,
+                        ),
+                      ),
 
                       subtitle: Text(task.description),
+                      leading: Checkbox(
+                        value: task.isCompleted,
+
+                        onChanged: (value) async {
+                          await taskService.updateTaskStatus(task.id, value!);
+
+                          await fetchTasks();
+                        },
+                      ),
                       trailing: IconButton(
                         icon: const Icon(Icons.delete),
 

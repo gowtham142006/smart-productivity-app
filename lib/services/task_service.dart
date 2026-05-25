@@ -34,4 +34,11 @@ class TaskService {
   Future<void> deleteTask(String taskId) async {
     await supabase.from('tasks').delete().eq('id', taskId);
   }
+
+  Future<void> updateTaskStatus(String taskId, bool isCompleted) async {
+    await supabase
+        .from('tasks')
+        .update({'is_completed': isCompleted})
+        .eq('id', taskId);
+  }
 }
