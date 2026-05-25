@@ -1,20 +1,22 @@
 import 'package:flutter/material.dart';
-import '../../../../services/task_service.dart';
+import 'package:go_router/go_router.dart';
 import '../../data/task_model.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../providers/task_provider.dart';
 
-class TasksScreen extends StatefulWidget {
+class TasksScreen extends ConsumerStatefulWidget {
   const TasksScreen({super.key});
 
   @override
-  State<TasksScreen> createState() => _TasksScreenState();
+  ConsumerState<TasksScreen> createState() => _TasksScreenState();
 }
 
-class _TasksScreenState extends State<TasksScreen> {
+bool isLoading = false;
+
+class _TasksScreenState extends ConsumerState<TasksScreen> {
   final titleController = TextEditingController();
 
   final descriptionController = TextEditingController();
-
-  final taskService = TaskService();
 
   List<TaskModel> tasks = [];
 
@@ -26,17 +28,31 @@ class _TasksScreenState extends State<TasksScreen> {
   }
 
   Future<void> fetchTasks() async {
+    setState(() {
+      isLoading = true;
+    });
+
+    final taskService = ref.read(taskServiceProvider);
+
     final response = await taskService.getTasks();
 
     setState(() {
       tasks = response.map((task) => TaskModel.fromJson(task)).toList();
+
+      isLoading = false;
     });
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Tasks')),
+      appBar: AppBar(
+        title: const Text('Tasks'),
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () => context.go('/home'),
+        ),
+      ),
       body: Padding(
         padding: const EdgeInsets.all(16),
 
@@ -60,11 +76,17 @@ class _TasksScreenState extends State<TasksScreen> {
 
             ElevatedButton(
               onPressed: () async {
+                final taskService = ref.read(taskServiceProvider);
                 await taskService.addTask(
                   title: titleController.text,
 
                   description: descriptionController.text,
                 );
+
+                if (!context.mounted) return;
+                ScaffoldMessenger.of(
+                  context,
+                ).showSnackBar(const SnackBar(content: Text('Task added')));
                 await fetchTasks();
                 titleController.clear();
 
@@ -76,47 +98,78 @@ class _TasksScreenState extends State<TasksScreen> {
             const SizedBox(height: 24),
 
             Expanded(
-              child: ListView.builder(
-                itemCount: tasks.length,
+              child: isLoading
+                  ? const Center(child: CircularProgressIndicator())
+                  : tasks.isEmpty
+                  ? const Center(child: Text('No tasks yet'))
+                  : ListView.builder(
+                      itemCount: tasks.length,
 
-                itemBuilder: (context, index) {
-                  final task = tasks[index];
+                      itemBuilder: (context, index) {
+                        final task = tasks[index];
 
-                  return Card(
-                    child: ListTile(
-                      title: Text(
-                        task.title,
+                        return Card(
+                          child: ListTile(
+                            leading: Checkbox(
+                              value: task.isCompleted,
 
-                        style: TextStyle(
-                          decoration: task.isCompleted
-                              ? TextDecoration.lineThrough
-                              : TextDecoration.none,
-                        ),
-                      ),
+                              onChanged: (value) async {
+                                final taskService = ref.read(
+                                  taskServiceProvider,
+                                );
 
-                      subtitle: Text(task.description),
-                      leading: Checkbox(
-                        value: task.isCompleted,
+                                await taskService.updateTaskStatus(
+                                  task.id,
+                                  value!,
+                                );
 
-                        onChanged: (value) async {
-                          await taskService.updateTaskStatus(task.id, value!);
+                                if (!context.mounted) return;
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text(
+                                      value
+                                          ? 'Task completed'
+                                          : 'Task uncompleted',
+                                    ),
+                                  ),
+                                );
+                                await fetchTasks();
+                              },
+                            ),
 
-                          await fetchTasks();
-                        },
-                      ),
-                      trailing: IconButton(
-                        icon: const Icon(Icons.delete),
+                            title: Text(
+                              task.title,
 
-                        onPressed: () async {
-                          await taskService.deleteTask(task.id);
+                              style: TextStyle(
+                                decoration: task.isCompleted
+                                    ? TextDecoration.lineThrough
+                                    : TextDecoration.none,
+                              ),
+                            ),
 
-                          await fetchTasks();
-                        },
-                      ),
+                            subtitle: Text(task.description),
+
+                            trailing: IconButton(
+                              icon: const Icon(Icons.delete),
+
+                              onPressed: () async {
+                                final taskService = ref.read(
+                                  taskServiceProvider,
+                                );
+
+                                await taskService.deleteTask(task.id);
+
+                                if (!context.mounted) return;
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(content: Text('Task deleted')),
+                                );
+                                await fetchTasks();
+                              },
+                            ),
+                          ),
+                        );
+                      },
                     ),
-                  );
-                },
-              ),
             ),
           ],
         ),
