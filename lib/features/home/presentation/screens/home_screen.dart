@@ -1,37 +1,53 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../../shared/widgets/dashboard_card.dart';
-import '../../../../core/theme/text_styles.dart';
-import '../../../../shared/widgets/custom_button.dart';
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
+    final user = Supabase.instance.client.auth.currentUser;
+
+    final email = user?.email ?? 'User';
+
+    final username = email.split('@').first;
     return Scaffold(
       appBar: AppBar(title: const Text('Smart Productivity App')),
 
-      body: SingleChildScrollView(
+      body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.all(16),
+
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text('Hello Gowtham 👋', style: AppTextStyles.heading),
 
-              const Text(
-                'Stay productive today',
-                style: AppTextStyles.subtitle,
+            children: [
+              const SizedBox(height: 12),
+
+              Text(
+                'Hello $username 👋',
+                style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold),
               ),
 
-              const SizedBox(height: 24),
+              const SizedBox(height: 8),
+
+              Text(
+                'Stay productive today',
+
+                style: TextStyle(fontSize: 16, color: Colors.grey.shade600),
+              ),
+
+              const SizedBox(height: 32),
 
               DashboardCard(
                 title: 'AI Chat',
+
                 subtitle: 'Ask anything instantly',
-                icon: Icons.chat,
+
+                icon: Icons.smart_toy,
+
                 onTap: () {
                   context.go('/chat');
                 },
@@ -41,8 +57,11 @@ class HomeScreen extends StatelessWidget {
 
               DashboardCard(
                 title: 'Tasks',
+
                 subtitle: 'Manage your daily tasks',
+
                 icon: Icons.task,
+
                 onTap: () {
                   context.go('/tasks');
                 },
@@ -52,25 +71,14 @@ class HomeScreen extends StatelessWidget {
 
               DashboardCard(
                 title: 'Notes',
+
                 subtitle: 'Write and organize notes',
+
                 icon: Icons.note,
+
                 onTap: () {
                   context.go('/notes');
                 },
-              ),
-              const SizedBox(height: 16),
-              CustomButton(
-                text: 'Go to Login',
-                onPressed: () {
-                  context.go('/login');
-                },
-              ),
-              TextButton(
-                onPressed: () {
-                  context.go('/signup');
-                },
-
-                child: const Text('Create an account'),
               ),
             ],
           ),

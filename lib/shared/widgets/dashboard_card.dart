@@ -2,15 +2,22 @@ import 'package:flutter/material.dart';
 
 class DashboardCard extends StatelessWidget {
   final String title;
+
   final String subtitle;
+
   final IconData icon;
+
   final VoidCallback onTap;
 
   const DashboardCard({
     super.key,
+
     required this.title,
+
     required this.subtitle,
+
     required this.icon,
+
     required this.onTap,
   });
 
@@ -19,42 +26,46 @@ class DashboardCard extends StatelessWidget {
     return GestureDetector(
       onTap: onTap,
 
-      child: Container(
-        padding: const EdgeInsets.all(20),
+      child: Card(
+        elevation: 4,
 
-        decoration: BoxDecoration(
-          color: Colors.white,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
 
-          borderRadius: BorderRadius.circular(20),
+        child: Padding(
+          padding: const EdgeInsets.all(20),
 
-          boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 10)],
-        ),
+          child: Row(
+            children: [
+              Icon(
+                icon,
+                size: 40,
+                color: Theme.of(context).colorScheme.primary,
+              ),
 
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              const SizedBox(width: 16),
 
-          children: [
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
 
-              children: [
-                Text(
-                  title,
+                  children: [
+                    Text(
+                      title,
 
-                  style: const TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
-                  ),
+                      style: const TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+
+                    const SizedBox(height: 4),
+
+                    Text(subtitle),
+                  ],
                 ),
-
-                const SizedBox(height: 6),
-
-                Text(subtitle),
-              ],
-            ),
-
-            Icon(Icons.chat, color: Colors.blue),
-          ],
+              ),
+            ],
+          ),
         ),
       ),
     );

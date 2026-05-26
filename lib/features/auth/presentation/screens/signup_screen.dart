@@ -17,6 +17,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
 
   final passwordController = TextEditingController();
   final authService = AuthService();
+  final usernameController = TextEditingController();
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
@@ -71,6 +72,15 @@ class _SignUpScreenState extends State<SignUpScreen> {
                               ?.copyWith(color: colorScheme.onSurfaceVariant),
                         ),
                         const SizedBox(height: 10),
+                        TextField(
+                          controller: usernameController,
+
+                          decoration: const InputDecoration(
+                            hintText: 'Username',
+                          ),
+                        ),
+
+                        const SizedBox(height: 10),
 
                         CustomTextField(
                           hintText: 'Email',
@@ -109,6 +119,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
                                 await authService.signUp(
                                   email: emailController.text,
                                   password: passwordController.text,
+                                  username: usernameController.text,
                                 );
 
                                 debugPrint('Signup Success');
