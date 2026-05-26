@@ -41,4 +41,13 @@ class TaskService {
         .update({'is_completed': isCompleted})
         .eq('id', taskId);
   }
+
+  Stream<List<Map<String, dynamic>>> streamTasks() {
+    final user = supabase.auth.currentUser;
+
+    return supabase
+        .from('tasks')
+        .stream(primaryKey: ['id'])
+        .eq('user_id', user!.id);
+  }
 }
