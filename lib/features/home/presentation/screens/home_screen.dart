@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import '../../../../services/auth_service.dart';
 import '../../../../shared/widgets/dashboard_card.dart';
 
 class HomeScreen extends StatelessWidget {
@@ -14,7 +15,52 @@ class HomeScreen extends StatelessWidget {
 
     final username = email.split('@').first;
     return Scaffold(
-      appBar: AppBar(title: const Text('Smart Productivity App')),
+      appBar: AppBar(
+        title: const Text('Smart Productivity App'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.settings),
+            onPressed: () {
+              showModalBottomSheet(
+                context: context,
+                builder: (context) {
+                  return SafeArea(
+                    child: Padding(
+                      padding: const EdgeInsets.all(16),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          const Text(
+                            'Settings',
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          const SizedBox(height: 16),
+                          ElevatedButton.icon(
+                            onPressed: () async {
+                              await AuthService().signOut();
+
+                              if (!context.mounted) return;
+
+                              Navigator.pop(context);
+                              context.go('/login');
+                            },
+                            icon: const Icon(Icons.logout),
+                            label: const Text('Logout'),
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
+                },
+              );
+            },
+          ),
+        ],
+      ),
 
       body: SafeArea(
         child: Padding(
