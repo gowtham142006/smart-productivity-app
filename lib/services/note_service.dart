@@ -1,44 +1,41 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 class NoteService {
-  final supabase = Supabase.instance.client;
+  final SupabaseClient _client;
+  NoteService(this._client);
+
+  String? get _userId => _client.auth.currentUser?.id;
+
+  Future<List<Map<String, dynamic>>> getNotes() async {
+    if (_userId == null) return [];
+
+    return await _client
+        .from('notes')
+        .select()
+        .eq('user_id', _userId!)
+        .order('created_at', ascending: false);
+  }
 
   Future<void> addNote({required String title, required String content}) async {
-    final user = supabase.auth.currentUser;
+    if (_userId == null) return;
 
-    await supabase.from('notes').insert({
+    await _client.from('notes').insert({
       'title': title,
-
       'content': content,
-
-      'user_id': user!.id,
+      'user_id': _userId,
     });
   }
 
-  Future<List<dynamic>> getNotes() async {
-    final user = supabase.auth.currentUser;
-
-    final response = await supabase
-        .from('notes')
-        .select()
-        .eq('user_id', user!.id)
-        .order('created_at', ascending: false);
-
-    return response;
-  }
-
   Future<void> deleteNote(String noteId) async {
-    await supabase.from('notes').delete().eq('id', noteId);
+    await _client.from('notes').delete().eq('id', noteId);
   }
 
   Future<void> updateNote({
     required String noteId,
-
     required String title,
-
     required String content,
   }) async {
-    await supabase
+    await _client
         .from('notes')
         .update({'title': title, 'content': content})
         .eq('id', noteId);

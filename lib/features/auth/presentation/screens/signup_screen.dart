@@ -16,7 +16,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
   final emailController = TextEditingController();
 
   final passwordController = TextEditingController();
-  final authService = AuthService();
+  final authService = AuthService.instance();
   final usernameController = TextEditingController();
   @override
   Widget build(BuildContext context) {

@@ -1,207 +1,218 @@
 import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
-import '../../data/task_model.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../../core/theme/app_colors.dart';
 import '../../providers/task_provider.dart';
+import '../../providers/category_provider.dart';
+import '../widgets/task_card.dart';
+import '../widgets/task_form_sheet.dart';
+import '../widgets/task_filter_bar.dart';
 
-class TasksScreen extends ConsumerStatefulWidget {
+class TasksScreen extends ConsumerWidget {
   const TasksScreen({super.key});
 
   @override
-  ConsumerState<TasksScreen> createState() => _TasksScreenState();
-}
+  Widget build(BuildContext context, WidgetRef ref) {
+    final tasksAsync = ref.watch(taskListProvider);
+    final categories = ref.watch(categoryListProvider).value ?? [];
 
-class _TasksScreenState extends ConsumerState<TasksScreen> {
-  final titleController = TextEditingController();
-  final descriptionController = TextEditingController();
-
-  List<TaskModel> tasks = [];
-  bool isLoading = false;
-
-  @override
-  void initState() {
-    super.initState();
-    fetchTasks();
-  }
-
-  @override
-  void dispose() {
-    titleController.dispose();
-    descriptionController.dispose();
-    super.dispose();
-  }
-
-  Future<void> fetchTasks() async {
-    setState(() {
-      isLoading = true;
-    });
-
-    final taskService = ref.read(taskServiceProvider);
-    final response = await taskService.getTasks();
-
-    setState(() {
-      tasks = response.map((task) => TaskModel.fromJson(task)).toList();
-      isLoading = false;
-    });
-  }
-
-  @override
-  Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Tasks'),
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back),
-          onPressed: () => context.go('/home'),
-        ),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.refresh),
+            onPressed: () => ref.invalidate(taskListProvider),
+          ),
+        ],
       ),
-      floatingActionButton: FloatingActionButton(
+      floatingActionButton: FloatingActionButton.extended(
         onPressed: () {
-          final parentContext = context;
-
           showModalBottomSheet(
             context: context,
             isScrollControlled: true,
-            builder: (context) {
-              return Padding(
-                padding: EdgeInsets.only(
-                  left: 16,
-                  right: 16,
-                  top: 16,
-                  bottom: MediaQuery.of(context).viewInsets.bottom + 16,
-                ),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    TextField(
-                      controller: titleController,
-                      decoration: const InputDecoration(hintText: 'Task title'),
-                    ),
-                    const SizedBox(height: 16),
-                    TextField(
-                      controller: descriptionController,
-                      decoration: const InputDecoration(
-                        hintText: 'Task description',
-                      ),
-                    ),
-                    const SizedBox(height: 20),
-                    ElevatedButton(
-                      onPressed: () async {
-                        final taskService = ref.read(taskServiceProvider);
-
-                        await taskService.addTask(
-                          title: titleController.text,
-                          description: descriptionController.text,
-                        );
-
-                        // Refresh the list so the new task appears immediately
-                        await fetchTasks();
-
-                        titleController.clear();
-                        descriptionController.clear();
-
-                        if (!context.mounted) return;
-
-                        Navigator.pop(context);
-
-                        ScaffoldMessenger.of(parentContext).showSnackBar(
-                          const SnackBar(content: Text('Task added')),
-                        );
-                      },
-                      child: const Text('Add Task'),
-                    ),
-                  ],
-                ),
-              );
-            },
+            backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+            shape: const RoundedRectangleBorder(
+              borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+            ),
+            builder: (_) => const TaskFormSheet(),
           );
         },
-        child: const Icon(Icons.add),
+        icon: const Icon(Icons.add),
+        label: const Text('New Task'),
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          children: [
-            const SizedBox(height: 20),
-            Expanded(
-              child: isLoading
-                  ? const Center(child: CircularProgressIndicator())
-                  : tasks.isEmpty
-                  ? const Center(child: Text('No tasks yet'))
-                  : ListView.builder(
-                      itemCount: tasks.length,
-                      itemBuilder: (context, index) {
-                        final task = tasks[index];
+      body: Column(
+        children: [
+          const SizedBox(height: 8),
+          const TaskFilterBar(),
+          const SizedBox(height: 12),
+          Expanded(
+            child: tasksAsync.when(
+              loading: () => const Center(child: CircularProgressIndicator()),
+              error: (error, stack) => _ErrorState(
+                message: 'Failed to load tasks',
+                onRetry: () => ref.invalidate(taskListProvider),
+              ),
+              data: (tasks) {
+                if (tasks.isEmpty) {
+                  return _EmptyState();
+                }
 
-                        return Card(
-                          child: ListTile(
-                            leading: Checkbox(
-                              value: task.isCompleted,
-                              onChanged: (value) async {
-                                setState(() {
-                                  tasks[index] = TaskModel(
-                                    id: task.id,
-                                    title: task.title,
-                                    description: task.description,
-                                    isCompleted: value!,
-                                  );
-                                });
+                return RefreshIndicator(
+                  onRefresh: () async {
+                    ref.invalidate(taskListProvider);
+                    // Wait for the provider to rebuild
+                    await ref.read(taskListProvider.future);
+                  },
+                  child: ListView.separated(
+                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 100),
+                    itemCount: tasks.length,
+                    separatorBuilder: (context, index) => const SizedBox(height: 8),
+                    itemBuilder: (context, index) {
+                      final task = tasks[index];
 
-                                final taskService = ref.read(
-                                  taskServiceProvider,
-                                );
+                      // Find category name/color
+                      final category = categories
+                          .where((c) => c.id == task.categoryId)
+                          .firstOrNull;
 
-                                await taskService.updateTaskStatus(
-                                  task.id,
-                                  value!,
-                                );
+                      Color? catColor;
+                      if (category != null) {
+                        try {
+                          catColor = Color(
+                            int.parse(
+                                category.color.replaceFirst('#', '0xFF')),
+                          );
+                        } catch (_) {}
+                      }
 
-                                if (!context.mounted) return;
+                      return TaskCard(
+                        task: task,
+                        categoryName: category?.name,
+                        categoryColor: catColor,
+                        onToggle: () {
+                          ref
+                              .read(taskListProvider.notifier)
+                              .toggleComplete(task.id, !task.isCompleted);
 
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(
-                                    content: Text(
-                                      value
-                                          ? 'Task completed'
-                                          : 'Task uncompleted',
-                                    ),
-                                  ),
-                                );
-                              },
-                            ),
-                            title: Text(
-                              task.title,
-                              style: TextStyle(
-                                decoration: task.isCompleted
-                                    ? TextDecoration.lineThrough
-                                    : TextDecoration.none,
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text(
+                                task.isCompleted
+                                    ? 'Task marked as pending'
+                                    : 'Task completed ✓',
                               ),
+                              duration: const Duration(seconds: 1),
                             ),
-                            subtitle: Text(task.description),
-                            trailing: IconButton(
-                              icon: const Icon(Icons.delete),
-                              onPressed: () async {
-                                setState(() {
-                                  tasks.removeAt(index);
-                                });
+                          );
+                        },
+                        onDelete: () {
+                          ref
+                              .read(taskListProvider.notifier)
+                              .deleteTask(task.id);
 
-                                final taskService = ref.read(
-                                  taskServiceProvider,
-                                );
-
-                                await taskService.deleteTask(task.id);
-
-                                if (!context.mounted) return;
-
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(content: Text('Task deleted')),
-                                );
-                              },
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('Task deleted'),
+                              duration: Duration(seconds: 1),
                             ),
-                          ),
-                        );
-                      },
-                    ),
+                          );
+                        },
+                      );
+                    },
+                  ),
+                );
+              },
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _EmptyState extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(32),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 80,
+              height: 80,
+              decoration: BoxDecoration(
+                color: AppColors.primary.withValues(alpha: 0.1),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(
+                Icons.task_alt,
+                size: 40,
+                color: AppColors.primary,
+              ),
+            ),
+            const SizedBox(height: 16),
+            Text(
+              'No tasks yet',
+              style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w600,
+                  ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Tap the + button to create your first task\nand start being productive!',
+              textAlign: TextAlign.center,
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    color: AppColors.textSecondary,
+                  ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _ErrorState extends StatelessWidget {
+  final String message;
+  final VoidCallback onRetry;
+
+  const _ErrorState({required this.message, required this.onRetry});
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(32),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 80,
+              height: 80,
+              decoration: BoxDecoration(
+                color: AppColors.error.withValues(alpha: 0.1),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(
+                Icons.error_outline,
+                size: 40,
+                color: AppColors.error,
+              ),
+            ),
+            const SizedBox(height: 16),
+            Text(
+              message,
+              style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w600,
+                  ),
+            ),
+            const SizedBox(height: 16),
+            ElevatedButton.icon(
+              onPressed: onRetry,
+              icon: const Icon(Icons.refresh),
+              label: const Text('Retry'),
             ),
           ],
         ),
