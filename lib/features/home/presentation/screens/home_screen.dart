@@ -5,6 +5,8 @@ import '../../../../core/theme/app_colors.dart';
 import '../../../../core/providers/core_providers.dart';
 import '../../../tasks/providers/task_provider.dart';
 import '../../../notes/providers/note_provider.dart';
+import '../widgets/daily_plan_card.dart';
+import '../../../tasks/presentation/widgets/ai_task_suggestions.dart';
 
 class HomeScreen extends ConsumerWidget {
   const HomeScreen({super.key});
@@ -114,7 +116,14 @@ class HomeScreen extends ConsumerWidget {
                   ),
                 ],
               ),
-              const SizedBox(height: 28),
+              const SizedBox(height: 24),
+
+              // AI Daily Planner Card
+              const DailyPlanCard(),
+
+              // AI Task Suggestions Card
+              const AiTaskSuggestions(),
+              const SizedBox(height: 16),
 
               // Quick Actions
               Text(
