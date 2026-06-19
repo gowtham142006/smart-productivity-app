@@ -1,9 +1,12 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../services/auth_service.dart';
 import '../../services/task_service.dart';
 import '../../services/note_service.dart';
 import '../../services/category_service.dart';
+import '../../services/gemini_service.dart';
+import '../../features/chat/domain/chat_repository.dart';
 
 // ─── Core Dependency Providers ─────────────────────
 
@@ -27,6 +30,14 @@ final noteServiceProvider = Provider<NoteService>((ref) {
 
 final categoryServiceProvider = Provider<CategoryService>((ref) {
   return CategoryService(ref.watch(supabaseClientProvider));
+});
+
+final geminiServiceProvider = Provider<GeminiService>((ref) {
+  return GeminiService(apiKey: dotenv.get('GEMINI_API_KEY'));
+});
+
+final chatRepositoryProvider = Provider<ChatRepository>((ref) {
+  return ChatRepository(ref.watch(supabaseClientProvider));
 });
 
 // ─── Auth State ────────────────────────────────────
