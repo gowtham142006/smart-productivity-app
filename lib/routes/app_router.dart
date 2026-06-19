@@ -1,3 +1,6 @@
+import 'dart:async';
+
+import 'package:flutter/foundation.dart';
 import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -12,8 +15,29 @@ import '../features/notes/presentation/screens/notes_screen.dart';
 import '../features/profile/presentation/screens/profile_screen.dart';
 import 'shell_scaffold.dart';
 
+/// Converts a Supabase auth state [Stream] into a [Listenable]
+/// so GoRouter re-evaluates its redirect whenever the session changes.
+class GoRouterRefreshStream extends ChangeNotifier {
+  GoRouterRefreshStream(Stream<AuthState> stream) {
+    notifyListeners(); // initial evaluation
+    _subscription = stream.asBroadcastStream().listen((_) {
+      notifyListeners();
+    });
+  }
+
+  late final StreamSubscription<AuthState> _subscription;
+
+  @override
+  void dispose() {
+    _subscription.cancel();
+    super.dispose();
+  }
+}
+
 final GoRouter appRouter = GoRouter(
   initialLocation: '/',
+  refreshListenable:
+      GoRouterRefreshStream(Supabase.instance.client.auth.onAuthStateChange),
   redirect: (context, state) {
     final session = Supabase.instance.client.auth.currentSession;
     final isLoggedIn = session != null;
