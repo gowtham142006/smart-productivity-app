@@ -3,9 +3,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../providers/task_provider.dart';
 import '../../providers/category_provider.dart';
+import '../../providers/task_ai_provider.dart';
 import '../widgets/task_card.dart';
 import '../widgets/task_form_sheet.dart';
 import '../widgets/task_filter_bar.dart';
+import '../widgets/ai_task_suggestions.dart';
 
 class TasksScreen extends ConsumerWidget {
   const TasksScreen({super.key});
@@ -19,6 +21,11 @@ class TasksScreen extends ConsumerWidget {
       appBar: AppBar(
         title: const Text('Tasks'),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.auto_awesome_rounded, color: AppColors.primary),
+            onPressed: () => ref.read(taskAiProvider.notifier).generateSuggestions(),
+            tooltip: 'Suggest Tasks (AI)',
+          ),
           IconButton(
             icon: const Icon(Icons.refresh),
             onPressed: () => ref.invalidate(taskListProvider),
@@ -40,10 +47,12 @@ class TasksScreen extends ConsumerWidget {
         icon: const Icon(Icons.add),
         label: const Text('New Task'),
       ),
+      floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
       body: Column(
         children: [
           const SizedBox(height: 8),
           const TaskFilterBar(),
+          const AiTaskSuggestions(),
           const SizedBox(height: 12),
           Expanded(
             child: tasksAsync.when(
@@ -54,7 +63,7 @@ class TasksScreen extends ConsumerWidget {
               ),
               data: (tasks) {
                 if (tasks.isEmpty) {
-                  return _EmptyState();
+                  return const _EmptyState();
                 }
 
                 return RefreshIndicator(
@@ -130,9 +139,11 @@ class TasksScreen extends ConsumerWidget {
   }
 }
 
-class _EmptyState extends StatelessWidget {
+class _EmptyState extends ConsumerWidget {
+  const _EmptyState();
+
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(32),
@@ -161,11 +172,25 @@ class _EmptyState extends StatelessWidget {
             ),
             const SizedBox(height: 8),
             Text(
-              'Tap the + button to create your first task\nand start being productive!',
+              'Tap the + button to create your first task\nor ask AI to suggest some tasks!',
               textAlign: TextAlign.center,
               style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                     color: AppColors.textSecondary,
                   ),
+            ),
+            const SizedBox(height: 20),
+            ElevatedButton.icon(
+              onPressed: () => ref.read(taskAiProvider.notifier).generateSuggestions(),
+              icon: const Icon(Icons.auto_awesome, size: 18),
+              label: const Text('Suggest Tasks with AI'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.primary,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
             ),
           ],
         ),

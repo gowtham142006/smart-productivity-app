@@ -2,8 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../providers/note_provider.dart';
+import '../../providers/note_ai_provider.dart';
 import '../../data/note_model.dart';
 import '../../../../core/utils/date_formatter.dart';
+import '../widgets/note_summary_sheet.dart';
 
 class NotesScreen extends ConsumerWidget {
   const NotesScreen({super.key});
@@ -17,6 +19,32 @@ class NotesScreen extends ConsumerWidget {
         title: const Text('Notes'),
         actions: [
           IconButton(
+            icon: const Icon(Icons.auto_awesome_rounded, color: AppColors.primary),
+            onPressed: () {
+              final notes = ref.read(noteListProvider).value ?? [];
+              if (notes.isEmpty) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('No notes available to summarize.'),
+                    behavior: SnackBarBehavior.floating,
+                  ),
+                );
+                return;
+              }
+              ref.read(noteAiProvider.notifier).summarizeAllNotes(notes);
+              showModalBottomSheet(
+                context: context,
+                isScrollControlled: true,
+                backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+                shape: const RoundedRectangleBorder(
+                  borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+                ),
+                builder: (_) => const NoteSummarySheet(),
+              );
+            },
+            tooltip: 'Summarize All Notes (AI)',
+          ),
+          IconButton(
             icon: const Icon(Icons.refresh),
             onPressed: () => ref.invalidate(noteListProvider),
           ),
@@ -27,6 +55,7 @@ class NotesScreen extends ConsumerWidget {
         icon: const Icon(Icons.add),
         label: const Text('New Note'),
       ),
+      floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
       body: notesAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (error, stack) => Center(
@@ -280,18 +309,75 @@ class _NoteCard extends StatelessWidget {
               Row(
                 children: [
                   Expanded(
-                    child: Text(
-                      note.title,
-                      style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                            fontWeight: FontWeight.w600,
-                          ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          note.title,
+                          style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                                fontWeight: FontWeight.w600,
+                              ),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          DateFormatter.relative(note.createdAt),
+                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                color: AppColors.textTertiary,
+                              ),
+                        ),
+                      ],
                     ),
                   ),
-                  Text(
-                    DateFormatter.relative(note.createdAt),
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: AppColors.textTertiary,
+                  PopupMenuButton<String>(
+                    icon: const Icon(Icons.more_vert, size: 20, color: AppColors.textSecondary),
+                    padding: EdgeInsets.zero,
+                    onSelected: (value) async {
+                      if (value == 'summarize') {
+                        ref.read(noteAiProvider.notifier).summarizeNote(note);
+                        showModalBottomSheet(
+                          context: context,
+                          isScrollControlled: true,
+                          backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+                          shape: const RoundedRectangleBorder(
+                            borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+                          ),
+                          builder: (_) => NoteSummarySheet(note: note),
+                        );
+                      } else if (value == 'tasks') {
+                        ref.read(noteAiProvider.notifier).convertNoteToTasks(note);
+                        showModalBottomSheet(
+                          context: context,
+                          isScrollControlled: true,
+                          backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+                          shape: const RoundedRectangleBorder(
+                            borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+                          ),
+                          builder: (_) => NoteSummarySheet(note: note),
+                        );
+                      }
+                    },
+                    itemBuilder: (context) => [
+                      const PopupMenuItem(
+                        value: 'summarize',
+                        child: Row(
+                          children: [
+                            Icon(Icons.auto_awesome, size: 18, color: AppColors.primary),
+                            SizedBox(width: 8),
+                            Text('Summarize Note'),
+                          ],
                         ),
+                      ),
+                      const PopupMenuItem(
+                        value: 'tasks',
+                        child: Row(
+                          children: [
+                            Icon(Icons.playlist_add_check_rounded, size: 18, color: AppColors.success),
+                            SizedBox(width: 8),
+                            Text('Convert to Tasks'),
+                          ],
+                        ),
+                      ),
+                    ],
                   ),
                 ],
               ),
