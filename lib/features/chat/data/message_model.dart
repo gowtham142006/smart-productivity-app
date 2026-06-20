@@ -2,12 +2,17 @@ import 'package:google_generative_ai/google_generative_ai.dart' as gemini;
 
 enum MessageRole {
   user('user'),
-  model('model');
+  assistant('assistant'),
+  model('model'); // Legacy: Gemini SDK uses 'model', DB may have old records
 
   final String value;
   const MessageRole(this.value);
 
   static MessageRole fromString(String? value) {
+    // Normalize: both 'model' and 'assistant' map to assistant for display
+    if (value == 'model' || value == 'assistant') {
+      return MessageRole.assistant;
+    }
     return MessageRole.values.firstWhere(
       (e) => e.value == value,
       orElse: () => MessageRole.user,
@@ -50,6 +55,8 @@ class MessageModel {
 
   /// Convert to Gemini SDK Content for building chat history
   gemini.Content toGeminiContent() {
-    return gemini.Content(role.value, [gemini.TextPart(content)]);
+    // Gemini SDK expects 'user' or 'model' — never 'assistant'
+    final geminiRole = role == MessageRole.assistant ? 'model' : role.value;
+    return gemini.Content(geminiRole, [gemini.TextPart(content)]);
   }
 }
