@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../tasks/providers/task_provider.dart';
 import '../../notes/providers/note_provider.dart';
@@ -11,6 +12,11 @@ class DailyPlanNotifier extends AsyncNotifier<String> {
   }
 
   Future<void> generateDailyPlan() async {
+    // Prevent duplicate requests while one is already in-flight
+    if (state.isLoading) {
+      debugPrint('[DailyPlanNotifier] ⚠️ Skipping — request already in-flight');
+      return;
+    }
     state = const AsyncLoading();
     try {
       final tasks = ref.read(taskListProvider).value ?? [];

@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'task_provider.dart';
 import '../../../core/providers/core_providers.dart';
@@ -10,6 +11,11 @@ class TaskAiNotifier extends AsyncNotifier<List<String>> {
   }
 
   Future<void> generateSuggestions() async {
+    // Prevent duplicate requests while one is already in-flight
+    if (state.isLoading) {
+      debugPrint('[TaskAiNotifier] ⚠️ Skipping — request already in-flight');
+      return;
+    }
     state = const AsyncLoading();
     try {
       final tasks = ref.read(taskListProvider).value ?? [];

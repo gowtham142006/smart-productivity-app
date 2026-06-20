@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../data/note_model.dart';
 import '../../tasks/providers/task_provider.dart';
@@ -11,6 +12,11 @@ class NoteAiNotifier extends Notifier<AsyncValue<String>> {
   }
 
   Future<void> summarizeNote(NoteModel note) async {
+    // Prevent duplicate requests while one is already in-flight
+    if (state.isLoading) {
+      debugPrint('[NoteAiNotifier] ⚠️ Skipping summarizeNote — request already in-flight');
+      return;
+    }
     state = const AsyncLoading();
     try {
       final gemini = ref.read(geminiServiceProvider);
@@ -34,6 +40,11 @@ class NoteAiNotifier extends Notifier<AsyncValue<String>> {
   }
 
   Future<void> summarizeAllNotes(List<NoteModel> notes) async {
+    // Prevent duplicate requests while one is already in-flight
+    if (state.isLoading) {
+      debugPrint('[NoteAiNotifier] ⚠️ Skipping summarizeAllNotes — request already in-flight');
+      return;
+    }
     state = const AsyncLoading();
     try {
       if (notes.isEmpty) {
@@ -66,6 +77,11 @@ class NoteAiNotifier extends Notifier<AsyncValue<String>> {
   /// Extracts actionable tasks from note content and adds them directly to the Task list.
   /// Returns the list of tasks that were added.
   Future<List<String>> convertNoteToTasks(NoteModel note) async {
+    // Prevent duplicate requests while one is already in-flight
+    if (state.isLoading) {
+      debugPrint('[NoteAiNotifier] ⚠️ Skipping convertNoteToTasks — request already in-flight');
+      return [];
+    }
     state = const AsyncLoading();
     try {
       final gemini = ref.read(geminiServiceProvider);
