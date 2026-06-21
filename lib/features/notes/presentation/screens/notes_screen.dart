@@ -344,16 +344,28 @@ class _NoteCard extends StatelessWidget {
                           builder: (_) => NoteSummarySheet(note: note),
                         );
                       } else if (value == 'tasks') {
-                        ref.read(noteAiProvider.notifier).convertNoteToTasks(note);
-                        showModalBottomSheet(
-                          context: context,
-                          isScrollControlled: true,
-                          backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-                          shape: const RoundedRectangleBorder(
-                            borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-                          ),
-                          builder: (_) => NoteSummarySheet(note: note),
-                        );
+                        try {
+                          await ref.read(noteAiProvider.notifier).convertNoteToTasks(note);
+                          if (context.mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text('Note converted to task ✓'),
+                                behavior: SnackBarBehavior.floating,
+                                backgroundColor: AppColors.success,
+                              ),
+                            );
+                          }
+                        } catch (e) {
+                          if (context.mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text('Failed to convert note: $e'),
+                                behavior: SnackBarBehavior.floating,
+                                backgroundColor: AppColors.error,
+                              ),
+                            );
+                          }
+                        }
                       }
                     },
                     itemBuilder: (context) => [

@@ -8,8 +8,13 @@ import '../../data/note_model.dart';
 
 class NoteSummarySheet extends ConsumerWidget {
   final NoteModel? note; // Null means summarizing all notes
+  final bool isTaskConversion;
 
-  const NoteSummarySheet({super.key, this.note});
+  const NoteSummarySheet({
+    super.key,
+    this.note,
+    this.isTaskConversion = false,
+  });
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -58,7 +63,9 @@ class NoteSummarySheet extends ConsumerWidget {
               const SizedBox(width: 12),
               Expanded(
                 child: Text(
-                  note != null ? 'Note Summary' : 'All Notes Summary',
+                  isTaskConversion
+                      ? 'Convert to Task'
+                      : (note != null ? 'Note Summary' : 'All Notes Summary'),
                   style: Theme.of(context).textTheme.titleLarge?.copyWith(
                         fontWeight: FontWeight.w700,
                       ),
@@ -88,7 +95,7 @@ class NoteSummarySheet extends ConsumerWidget {
             child: SingleChildScrollView(
               physics: const BouncingScrollPhysics(),
               child: noteAiState.when(
-                loading: () => const Padding(
+                loading: () => Padding(
                   padding: EdgeInsets.symmetric(vertical: 40.0),
                   child: Center(
                     child: Column(
@@ -96,8 +103,10 @@ class NoteSummarySheet extends ConsumerWidget {
                         CircularProgressIndicator(strokeWidth: 3),
                         SizedBox(height: 16),
                         Text(
-                          'AI is analyzing note content...',
-                          style: TextStyle(
+                          isTaskConversion
+                              ? 'Converting note to task...'
+                              : 'AI is analyzing note content...',
+                          style: const TextStyle(
                             color: AppColors.textSecondary,
                             fontWeight: FontWeight.w500,
                           ),
@@ -113,8 +122,10 @@ class NoteSummarySheet extends ConsumerWidget {
                       const Icon(Icons.error_outline_rounded, color: AppColors.error, size: 36),
                       const SizedBox(height: 12),
                       Text(
-                        'Failed to summarize note',
-                        style: TextStyle(
+                        isTaskConversion
+                            ? 'Failed to convert note to task'
+                            : 'Failed to summarize note',
+                        style: const TextStyle(
                           color: AppColors.error,
                           fontWeight: FontWeight.bold,
                           fontSize: 15,

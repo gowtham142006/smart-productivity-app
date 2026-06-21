@@ -65,6 +65,7 @@ class EmptyChatState extends StatelessWidget {
                   label: Text(
                     s,
                     style: const TextStyle(
+                      color: AppColors.primary,
                       fontSize: 13,
                       fontWeight: FontWeight.w500,
                     ),

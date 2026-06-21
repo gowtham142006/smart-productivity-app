@@ -84,41 +84,15 @@ class NoteAiNotifier extends Notifier<AsyncValue<String>> {
     }
     state = const AsyncLoading();
     try {
-      final gemini = ref.read(geminiServiceProvider);
-      const systemInstruction = 
-          'You are a productivity expert. Extract actionable, clear checklist tasks from the note below. '
-          'Each task should start with an action verb and be 3 to 7 words long. '
-          'Respond ONLY with the list of extracted tasks, one per line. '
-          'Do NOT include numbering, bullet points, markdown formatting, or introductory explanation. '
-          'If the note contains no actionable items, write 2 realistic follow-up tasks relevant to the note\'s title.';
-
-      final userPrompt = 'Note Title: ${note.title}\nNote Content:\n${note.content}';
-
-      final response = await gemini.generateProductivityContent(
-        systemInstruction: systemInstruction,
-        userPrompt: userPrompt,
+      final taskListNotifier = ref.read(allTasksProvider.notifier);
+      await taskListNotifier.addTask(
+        title: note.title,
+        description: note.content,
+        priority: 'medium',
       );
 
-      final taskTitles = response
-          .split('\n')
-          .map((line) {
-            var clean = line.trim();
-            clean = clean.replaceFirst(RegExp(r'^[\d\-\.\*\•\+\s]+'), '');
-            return clean.trim();
-          })
-          .where((line) => line.isNotEmpty)
-          .toList();
-
-      final taskListNotifier = ref.read(allTasksProvider.notifier);
-      for (final title in taskTitles) {
-        await taskListNotifier.addTask(
-          title: title,
-          description: 'Created from note: "${note.title}"',
-          priority: 'medium',
-        );
-      }
-
-      state = AsyncData('Successfully converted note into ${taskTitles.length} tasks and added them to your Tasks tab.');
+      final taskTitles = [note.title];
+      state = AsyncData('Successfully converted note into a task and added it to your Tasks tab.');
       return taskTitles;
     } catch (e, st) {
       state = AsyncError(e, st);
