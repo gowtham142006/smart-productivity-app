@@ -76,21 +76,13 @@ class TaskFilterNotifier extends Notifier<TaskFilter> {
 final taskFilterProvider =
     NotifierProvider<TaskFilterNotifier, TaskFilter>(TaskFilterNotifier.new);
 
-// ─── Task List (AsyncNotifier) ─────────────────────
+// ─── Task List (AsyncNotifier - Unfiltered master data) ─────────────────────
 
-class TaskListNotifier extends AsyncNotifier<List<TaskModel>> {
+class AllTasksNotifier extends AsyncNotifier<List<TaskModel>> {
   @override
   Future<List<TaskModel>> build() async {
     final service = ref.watch(taskServiceProvider);
-    final filters = ref.watch(taskFilterProvider);
-
-    final data = await service.getTasks(
-      isCompleted: filters.showCompleted,
-      priority: filters.priority,
-      categoryId: filters.categoryId,
-      orderBy: filters.sortBy,
-    );
-
+    final data = await service.getTasks(); // Unfiltered!
     return data.map((e) => TaskModel.fromJson(e)).toList();
   }
 
@@ -177,15 +169,56 @@ class TaskListNotifier extends AsyncNotifier<List<TaskModel>> {
   }
 }
 
-final taskListProvider =
-    AsyncNotifierProvider<TaskListNotifier, List<TaskModel>>(
-  TaskListNotifier.new,
+final allTasksProvider =
+    AsyncNotifierProvider<AllTasksNotifier, List<TaskModel>>(
+  AllTasksNotifier.new,
 );
 
-// ─── Derived Providers ─────────────────────────────
+// ─── Filtered Task List (Local in-memory filter & sort) ─────────────────────
+
+final taskListProvider = Provider<AsyncValue<List<TaskModel>>>((ref) {
+  final allTasksAsync = ref.watch(allTasksProvider);
+  final filters = ref.watch(taskFilterProvider);
+
+  return allTasksAsync.whenData((tasks) {
+    var filtered = List<TaskModel>.from(tasks);
+
+    // Filter by completed status
+    if (filters.showCompleted != null) {
+      filtered = filtered.where((t) => t.isCompleted == filters.showCompleted).toList();
+    }
+
+    // Filter by priority
+    if (filters.priority != null) {
+      filtered = filtered.where((t) => t.priority == filters.priority).toList();
+    }
+
+    // Filter by category
+    if (filters.categoryId != null) {
+      filtered = filtered.where((t) => t.categoryId == filters.categoryId).toList();
+    }
+
+    // Sort
+    if (filters.sortBy == 'due_date') {
+      filtered.sort((a, b) {
+        if (a.dueDate == null && b.dueDate == null) return 0;
+        if (a.dueDate == null) return 1;
+        if (b.dueDate == null) return -1;
+        return a.dueDate!.compareTo(b.dueDate!);
+      });
+    } else {
+      // Default: sort by created_at DESC (newest first)
+      filtered.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+    }
+
+    return filtered;
+  });
+});
+
+// ─── Derived Providers (Unfiltered Dashboard Stats) ─────────────────────────────
 
 final overdueTasksCountProvider = Provider<int>((ref) {
-  final tasks = ref.watch(taskListProvider).value ?? [];
+  final tasks = ref.watch(allTasksProvider).value ?? [];
   final now = DateTime.now();
   return tasks
       .where((t) =>
@@ -194,7 +227,7 @@ final overdueTasksCountProvider = Provider<int>((ref) {
 });
 
 final todayTasksCountProvider = Provider<int>((ref) {
-  final tasks = ref.watch(taskListProvider).value ?? [];
+  final tasks = ref.watch(allTasksProvider).value ?? [];
   final now = DateTime.now();
   return tasks
       .where((t) =>
@@ -206,11 +239,11 @@ final todayTasksCountProvider = Provider<int>((ref) {
 });
 
 final completedTasksCountProvider = Provider<int>((ref) {
-  final tasks = ref.watch(taskListProvider).value ?? [];
+  final tasks = ref.watch(allTasksProvider).value ?? [];
   return tasks.where((t) => t.isCompleted).length;
 });
 
 final pendingTasksCountProvider = Provider<int>((ref) {
-  final tasks = ref.watch(taskListProvider).value ?? [];
+  final tasks = ref.watch(allTasksProvider).value ?? [];
   return tasks.where((t) => !t.isCompleted).length;
 });

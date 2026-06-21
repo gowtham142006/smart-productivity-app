@@ -59,7 +59,7 @@ class TaskFilterBar extends ConsumerWidget {
                 ),
                 itemBuilder: (context) => [
                   const PopupMenuItem(
-                    value: null,
+                    value: 'all',
                     child: Text('All Priorities'),
                   ),
                   ...TaskPriority.values.map(
@@ -76,7 +76,11 @@ class TaskFilterBar extends ConsumerWidget {
                   ),
                 ],
                 onSelected: (value) {
-                  ref.read(taskFilterProvider.notifier).setPriority(value);
+                  if (value == 'all') {
+                    ref.read(taskFilterProvider.notifier).setPriority(null);
+                  } else {
+                    ref.read(taskFilterProvider.notifier).setPriority(value);
+                  }
                 },
               ),
               if (categories.isNotEmpty) ...[
@@ -98,7 +102,7 @@ class TaskFilterBar extends ConsumerWidget {
                   ),
                   itemBuilder: (context) => [
                     const PopupMenuItem(
-                      value: null,
+                      value: 'all',
                       child: Text('All Categories'),
                     ),
                     ...categories.map(
@@ -125,7 +129,11 @@ class TaskFilterBar extends ConsumerWidget {
                     ),
                   ],
                   onSelected: (value) {
-                    ref.read(taskFilterProvider.notifier).setCategory(value);
+                    if (value == 'all') {
+                      ref.read(taskFilterProvider.notifier).setCategory(null);
+                    } else {
+                      ref.read(taskFilterProvider.notifier).setCategory(value);
+                    }
                   },
                 ),
               ],
