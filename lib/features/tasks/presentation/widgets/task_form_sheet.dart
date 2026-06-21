@@ -67,7 +67,7 @@ class _TaskFormSheetState extends ConsumerState<TaskFormSheet> {
     setState(() => _isSubmitting = true);
 
     try {
-      await ref.read(taskListProvider.notifier).addTask(
+      await ref.read(allTasksProvider.notifier).addTask(
             title: title,
             description: _descriptionController.text.trim(),
             priority: _priority.value,

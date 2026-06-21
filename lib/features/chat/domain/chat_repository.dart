@@ -65,12 +65,15 @@ class ChatRepository {
     required String role,
     required String content,
   }) async {
+    if (_userId == null) throw Exception('User not authenticated');
+
     final response = await _client
         .from('chat_messages')
         .insert({
           'conversation_id': conversationId,
           'role': role,
           'content': content,
+          'user_id': _userId,
         })
         .select()
         .single();

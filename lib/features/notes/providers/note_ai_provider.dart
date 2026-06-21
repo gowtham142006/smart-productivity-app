@@ -109,7 +109,7 @@ class NoteAiNotifier extends Notifier<AsyncValue<String>> {
           .where((line) => line.isNotEmpty)
           .toList();
 
-      final taskListNotifier = ref.read(taskListProvider.notifier);
+      final taskListNotifier = ref.read(allTasksProvider.notifier);
       for (final title in taskTitles) {
         await taskListNotifier.addTask(
           title: title,

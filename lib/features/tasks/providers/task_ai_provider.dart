@@ -63,7 +63,7 @@ class TaskAiNotifier extends AsyncNotifier<List<String>> {
   }
 
   Future<void> acceptSuggestion(String suggestion) async {
-    await ref.read(taskListProvider.notifier).addTask(
+    await ref.read(allTasksProvider.notifier).addTask(
       title: suggestion,
       priority: 'medium',
     );

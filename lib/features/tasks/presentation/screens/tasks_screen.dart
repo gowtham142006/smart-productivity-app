@@ -28,7 +28,7 @@ class TasksScreen extends ConsumerWidget {
           ),
           IconButton(
             icon: const Icon(Icons.refresh),
-            onPressed: () => ref.invalidate(taskListProvider),
+            onPressed: () => ref.invalidate(allTasksProvider),
           ),
         ],
       ),
@@ -59,7 +59,7 @@ class TasksScreen extends ConsumerWidget {
               loading: () => const Center(child: CircularProgressIndicator()),
               error: (error, stack) => _ErrorState(
                 message: 'Failed to load tasks',
-                onRetry: () => ref.invalidate(taskListProvider),
+                onRetry: () => ref.invalidate(allTasksProvider),
               ),
               data: (tasks) {
                 if (tasks.isEmpty) {
@@ -68,9 +68,9 @@ class TasksScreen extends ConsumerWidget {
 
                 return RefreshIndicator(
                   onRefresh: () async {
-                    ref.invalidate(taskListProvider);
+                    ref.invalidate(allTasksProvider);
                     // Wait for the provider to rebuild
-                    await ref.read(taskListProvider.future);
+                    await ref.read(allTasksProvider.future);
                   },
                   child: ListView.separated(
                     padding: const EdgeInsets.fromLTRB(16, 0, 16, 100),
@@ -100,7 +100,7 @@ class TasksScreen extends ConsumerWidget {
                         categoryColor: catColor,
                         onToggle: () {
                           ref
-                              .read(taskListProvider.notifier)
+                              .read(allTasksProvider.notifier)
                               .toggleComplete(task.id, !task.isCompleted);
 
                           ScaffoldMessenger.of(context).showSnackBar(
@@ -116,7 +116,7 @@ class TasksScreen extends ConsumerWidget {
                         },
                         onDelete: () {
                           ref
-                              .read(taskListProvider.notifier)
+                              .read(allTasksProvider.notifier)
                               .deleteTask(task.id);
 
                           ScaffoldMessenger.of(context).showSnackBar(

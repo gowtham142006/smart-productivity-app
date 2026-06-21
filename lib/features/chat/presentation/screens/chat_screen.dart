@@ -17,7 +17,6 @@ class ChatScreen extends ConsumerStatefulWidget {
 
 class _ChatScreenState extends ConsumerState<ChatScreen> {
   final ScrollController _scrollController = ScrollController();
-  String? _conversationId;
 
   @override
   void dispose() {
@@ -38,38 +37,34 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   }
 
   Future<void> _ensureConversation() async {
-    if (_conversationId != null) return;
+    final activeId = ref.read(activeConversationIdProvider);
+    if (activeId != null) return;
 
     final conversation = await ref
         .read(conversationListProvider.notifier)
         .createConversation();
-    setState(() {
-      _conversationId = conversation.id;
-    });
+    ref.read(activeConversationIdProvider.notifier).set(conversation.id);
   }
 
   void _sendMessage(String content) async {
     await _ensureConversation();
-    if (_conversationId == null) return;
+    final activeId = ref.read(activeConversationIdProvider);
+    if (activeId == null) return;
 
     await sendChatMessage(
       ref: ref,
-      conversationId: _conversationId!,
+      conversationId: activeId,
       content: content,
     );
     _scrollToBottom();
   }
 
   void _startNewChat() {
-    setState(() {
-      _conversationId = null;
-    });
+    ref.read(activeConversationIdProvider.notifier).set(null);
   }
 
   void _loadConversation(ConversationModel conversation) {
-    setState(() {
-      _conversationId = conversation.id;
-    });
+    ref.read(activeConversationIdProvider.notifier).set(conversation.id);
     Navigator.of(context).pop(); // close drawer
   }
 
@@ -77,15 +72,16 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   Widget build(BuildContext context) {
     final isGenerating = ref.watch(isGeneratingProvider);
     final conversationsAsync = ref.watch(conversationListProvider);
+    final activeConversationId = ref.watch(activeConversationIdProvider);
 
     // Watch messages if we have an active conversation
-    final messagesAsync = _conversationId != null
-        ? ref.watch(chatMessagesProvider(_conversationId!))
+    final messagesAsync = activeConversationId != null
+        ? ref.watch(chatMessagesProvider(activeConversationId))
         : null;
 
     // Auto-scroll when messages change
-    if (messagesAsync != null) {
-      ref.listen(chatMessagesProvider(_conversationId!), (_, next) {
+    if (messagesAsync != null && activeConversationId != null) {
+      ref.listen(chatMessagesProvider(activeConversationId), (_, next) {
         _scrollToBottom();
       });
     }
@@ -98,7 +94,9 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     return Scaffold(
       appBar: AppBar(
         title: Text(
-          _conversationId != null ? _getTitle(conversationsAsync) : 'AI Chat',
+          activeConversationId != null
+              ? _getTitle(conversationsAsync, activeConversationId)
+              : 'AI Chat',
         ),
         leading: Builder(
           builder: (ctx) => IconButton(
@@ -115,12 +113,13 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
           ),
         ],
       ),
-      drawer: _buildHistoryDrawer(conversationsAsync),
+      drawer: _buildHistoryDrawer(conversationsAsync, activeConversationId),
       body: Column(
         children: [
           // Messages area
+          // Messages area
           Expanded(
-            child: _conversationId == null || messagesAsync == null
+            child: activeConversationId == null || messagesAsync == null
                 ? EmptyChatState(onSuggestionTap: _sendMessage)
                 : messagesAsync.when(
                     loading: () =>
@@ -132,11 +131,11 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                           const Icon(Icons.error_outline,
                               size: 40, color: AppColors.error),
                           const SizedBox(height: 12),
-                          Text('Failed to load messages'),
+                          const Text('Failed to load messages'),
                           const SizedBox(height: 12),
                           ElevatedButton(
                             onPressed: () => ref.invalidate(
-                                chatMessagesProvider(_conversationId!)),
+                                chatMessagesProvider(activeConversationId)),
                             child: const Text('Retry'),
                           ),
                         ],
@@ -173,16 +172,18 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     );
   }
 
-  String _getTitle(AsyncValue<List<ConversationModel>> conversationsAsync) {
+  String _getTitle(
+      AsyncValue<List<ConversationModel>> conversationsAsync, String activeId) {
     final conversations = conversationsAsync.value ?? [];
     final current = conversations
-        .where((c) => c.id == _conversationId)
+        .where((c) => c.id == activeId)
         .firstOrNull;
     return current?.title ?? 'AI Chat';
   }
 
   Widget _buildHistoryDrawer(
-      AsyncValue<List<ConversationModel>> conversationsAsync) {
+      AsyncValue<List<ConversationModel>> conversationsAsync,
+      String? activeConversationId) {
     return Drawer(
       child: SafeArea(
         child: Column(
@@ -247,7 +248,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                     itemCount: conversations.length,
                     itemBuilder: (context, index) {
                       final convo = conversations[index];
-                      final isActive = convo.id == _conversationId;
+                      final isActive = convo.id == activeConversationId;
 
                       return Dismissible(
                         key: ValueKey(convo.id),
