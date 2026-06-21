@@ -12,6 +12,8 @@ class ChatBubble extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Align(
       alignment: isUser ? Alignment.centerRight : Alignment.centerLeft,
       child: Container(
@@ -32,7 +34,7 @@ class ChatBubble extends StatelessWidget {
               decoration: BoxDecoration(
                 color: isUser
                     ? AppColors.primary
-                    : AppColors.surfaceVariant,
+                    : (isDark ? AppColors.darkCard : AppColors.surfaceVariant),
                 borderRadius: BorderRadius.only(
                   topLeft: const Radius.circular(18),
                   topRight: const Radius.circular(18),
@@ -51,7 +53,9 @@ class ChatBubble extends StatelessWidget {
               child: SelectableText(
                 message.content,
                 style: TextStyle(
-                  color: isUser ? Colors.white : AppColors.textPrimary,
+                  color: isUser 
+                      ? Colors.white 
+                      : (isDark ? AppColors.darkTextPrimary : AppColors.textPrimary),
                   fontSize: 14.5,
                   height: 1.5,
                 ),
