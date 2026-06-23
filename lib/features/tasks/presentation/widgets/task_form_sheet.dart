@@ -2,12 +2,15 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/constants/enums.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../data/task_model.dart';
 import '../../providers/task_provider.dart';
 import '../../providers/category_provider.dart';
 import 'priority_selector.dart';
 
 class TaskFormSheet extends ConsumerStatefulWidget {
-  const TaskFormSheet({super.key});
+  final TaskModel? task; // null = create mode, non-null = edit mode
+
+  const TaskFormSheet({super.key, this.task});
 
   @override
   ConsumerState<TaskFormSheet> createState() => _TaskFormSheetState();
@@ -16,10 +19,27 @@ class TaskFormSheet extends ConsumerStatefulWidget {
 class _TaskFormSheetState extends ConsumerState<TaskFormSheet> {
   final _titleController = TextEditingController();
   final _descriptionController = TextEditingController();
-  TaskPriority _priority = TaskPriority.medium;
+  late TaskPriority _priority;
   String? _categoryId;
   DateTime? _dueDate;
   bool _isSubmitting = false;
+
+  @override
+  void initState() {
+    super.initState();
+    final task = widget.task;
+    if (task != null) {
+      // Edit mode: populate fields with task data
+      _titleController.text = task.title;
+      _descriptionController.text = task.description;
+      _priority = task.priority;
+      _categoryId = task.categoryId;
+      _dueDate = task.dueDate;
+    } else {
+      // Create mode: set default priority
+      _priority = TaskPriority.medium;
+    }
+  }
 
   @override
   void dispose() {
@@ -67,26 +87,87 @@ class _TaskFormSheetState extends ConsumerState<TaskFormSheet> {
     setState(() => _isSubmitting = true);
 
     try {
-      await ref.read(allTasksProvider.notifier).addTask(
-            title: title,
-            description: _descriptionController.text.trim(),
-            priority: _priority.value,
-            categoryId: _categoryId,
-            dueDate: _dueDate,
-          );
+      final isEditMode = widget.task != null;
+      final notifier = ref.read(allTasksProvider.notifier);
+
+      if (isEditMode) {
+        // Update mode
+        await notifier.updateTask(
+          taskId: widget.task!.id,
+          title: title,
+          description: _descriptionController.text.trim(),
+          priority: _priority.value,
+          categoryId: _categoryId,
+          dueDate: _dueDate,
+        );
+      } else {
+        // Create mode
+        await notifier.addTask(
+          title: title,
+          description: _descriptionController.text.trim(),
+          priority: _priority.value,
+          categoryId: _categoryId,
+          dueDate: _dueDate,
+        );
+      }
 
       if (!mounted) return;
       Navigator.pop(context);
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Task created ✓')),
+        SnackBar(
+          content: Text(isEditMode ? 'Task updated ✓' : 'Task created ✓'),
+        ),
       );
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to create task: $e')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Failed to save task: $e')));
     } finally {
       if (mounted) setState(() => _isSubmitting = false);
+    }
+  }
+
+  Future<void> _deleteTask() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Delete Task'),
+        content: const Text('Are you sure you want to delete this task?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text(
+              'Delete',
+              style: TextStyle(color: AppColors.error),
+            ),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true) return;
+
+    setState(() => _isSubmitting = true);
+
+    try {
+      await ref.read(allTasksProvider.notifier).deleteTask(widget.task!.id);
+
+      if (!mounted) return;
+      Navigator.pop(context);
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Task deleted ✓')));
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Failed to delete task: $e')));
+      setState(() => _isSubmitting = false);
     }
   }
 
@@ -120,10 +201,10 @@ class _TaskFormSheetState extends ConsumerState<TaskFormSheet> {
             const SizedBox(height: 16),
 
             Text(
-              'New Task',
-              style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                    fontWeight: FontWeight.w700,
-                  ),
+              widget.task != null ? 'Edit Task' : 'New Task',
+              style: Theme.of(
+                context,
+              ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700),
             ),
             const SizedBox(height: 16),
 
@@ -162,9 +243,9 @@ class _TaskFormSheetState extends ConsumerState<TaskFormSheet> {
             if (categories.isNotEmpty) ...[
               Text(
                 'Category',
-                style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                      fontWeight: FontWeight.w600,
-                    ),
+                style: Theme.of(
+                  context,
+                ).textTheme.labelLarge?.copyWith(fontWeight: FontWeight.w600),
               ),
               const SizedBox(height: 8),
               Container(
@@ -195,7 +276,8 @@ class _TaskFormSheetState extends ConsumerState<TaskFormSheet> {
                                 decoration: BoxDecoration(
                                   color: Color(
                                     int.parse(
-                                        c.color.replaceFirst('#', '0xFF')),
+                                      c.color.replaceFirst('#', '0xFF'),
+                                    ),
                                   ),
                                   shape: BoxShape.circle,
                                 ),
@@ -217,16 +299,18 @@ class _TaskFormSheetState extends ConsumerState<TaskFormSheet> {
             // Due date
             Text(
               'Due Date',
-              style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                    fontWeight: FontWeight.w600,
-                  ),
+              style: Theme.of(
+                context,
+              ).textTheme.labelLarge?.copyWith(fontWeight: FontWeight.w600),
             ),
             const SizedBox(height: 8),
             GestureDetector(
               onTap: _pickDate,
               child: Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 14,
+                ),
                 decoration: BoxDecoration(
                   color: AppColors.surfaceVariant,
                   borderRadius: BorderRadius.circular(12),
@@ -282,9 +366,27 @@ class _TaskFormSheetState extends ConsumerState<TaskFormSheet> {
                           color: Colors.white,
                         ),
                       )
-                    : const Text('Create Task'),
+                    : Text(widget.task != null ? 'Update Task' : 'Create Task'),
               ),
             ),
+
+            // Delete button (only in edit mode)
+            if (widget.task != null) ...[
+              const SizedBox(height: 12),
+              SizedBox(
+                height: 52,
+                child: OutlinedButton(
+                  onPressed: _isSubmitting ? null : _deleteTask,
+                  style: OutlinedButton.styleFrom(
+                    side: const BorderSide(color: AppColors.error),
+                  ),
+                  child: const Text(
+                    'Delete Task',
+                    style: TextStyle(color: AppColors.error),
+                  ),
+                ),
+              ),
+            ],
           ],
         ),
       ),

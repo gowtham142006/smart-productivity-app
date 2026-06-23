@@ -126,6 +126,17 @@ class TasksScreen extends ConsumerWidget {
                             ),
                           );
                         },
+                        onTap: () {
+                          showModalBottomSheet(
+                            context: context,
+                            isScrollControlled: true,
+                            backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+                            shape: const RoundedRectangleBorder(
+                              borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+                            ),
+                            builder: (_) => TaskFormSheet(task: task),
+                          );
+                        },
                       );
                     },
                   ),
