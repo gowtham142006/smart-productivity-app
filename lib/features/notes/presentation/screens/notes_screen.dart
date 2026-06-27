@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../providers/note_provider.dart';
 import '../../providers/note_ai_provider.dart';
@@ -16,10 +17,17 @@ class NotesScreen extends ConsumerWidget {
 
     return Scaffold(
       appBar: AppBar(
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () => context.go('/home'),
+        ),
         title: const Text('Notes'),
         actions: [
           IconButton(
-            icon: const Icon(Icons.auto_awesome_rounded, color: AppColors.primary),
+            icon: const Icon(
+              Icons.auto_awesome_rounded,
+              color: AppColors.primary,
+            ),
             onPressed: () {
               final notes = ref.read(noteListProvider).value ?? [];
               if (notes.isEmpty) {
@@ -51,7 +59,7 @@ class NotesScreen extends ConsumerWidget {
         ],
       ),
       floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => _showAddNoteSheet(context, ref),
+        onPressed: () => _showNoteEditorSheet(context, ref),
         icon: const Icon(Icons.add),
         label: const Text('New Note'),
       ),
@@ -69,8 +77,11 @@ class NotesScreen extends ConsumerWidget {
                   color: AppColors.error.withValues(alpha: 0.1),
                   shape: BoxShape.circle,
                 ),
-                child: const Icon(Icons.error_outline,
-                    size: 40, color: AppColors.error),
+                child: const Icon(
+                  Icons.error_outline,
+                  size: 40,
+                  color: AppColors.error,
+                ),
               ),
               const SizedBox(height: 16),
               const Text('Failed to load notes'),
@@ -96,22 +107,25 @@ class NotesScreen extends ConsumerWidget {
                       color: AppColors.primary.withValues(alpha: 0.1),
                       shape: BoxShape.circle,
                     ),
-                    child: const Icon(Icons.note_outlined,
-                        size: 40, color: AppColors.primary),
+                    child: const Icon(
+                      Icons.note_outlined,
+                      size: 40,
+                      color: AppColors.primary,
+                    ),
                   ),
                   const SizedBox(height: 16),
                   Text(
                     'No notes yet',
                     style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                          fontWeight: FontWeight.w600,
-                        ),
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
                   const SizedBox(height: 8),
                   Text(
                     'Tap the + button to jot down your thoughts',
                     style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          color: AppColors.textSecondary,
-                        ),
+                      color: AppColors.textSecondary,
+                    ),
                   ),
                 ],
               ),
@@ -137,116 +151,197 @@ class NotesScreen extends ConsumerWidget {
       ),
     );
   }
+}
 
-  void _showAddNoteSheet(BuildContext context, WidgetRef ref) {
-    final titleController = TextEditingController();
-    final contentController = TextEditingController();
+void _showNoteEditorSheet(
+  BuildContext context,
+  WidgetRef ref, {
+  NoteModel? note,
+}) {
+  final titleController = TextEditingController(text: note?.title);
+  final contentController = TextEditingController(text: note?.content);
 
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-      ),
-      builder: (sheetContext) {
-        return Padding(
-          padding: EdgeInsets.only(
-            left: 20,
-            right: 20,
-            top: 12,
-            bottom: MediaQuery.of(sheetContext).viewInsets.bottom + 20,
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Center(
-                child: Container(
-                  width: 40,
-                  height: 4,
-                  decoration: BoxDecoration(
-                    color: AppColors.textTertiary.withValues(alpha: 0.4),
-                    borderRadius: BorderRadius.circular(2),
-                  ),
+  showModalBottomSheet(
+    context: context,
+    isScrollControlled: true,
+    backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+    shape: const RoundedRectangleBorder(
+      borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+    ),
+    builder: (sheetContext) {
+      return Padding(
+        padding: EdgeInsets.only(
+          left: 20,
+          right: 20,
+          top: 12,
+          bottom: MediaQuery.of(sheetContext).viewInsets.bottom + 20,
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Center(
+              child: Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: AppColors.textTertiary.withValues(alpha: 0.4),
+                  borderRadius: BorderRadius.circular(2),
                 ),
               ),
-              const SizedBox(height: 16),
-              Text(
-                'New Note',
-                style: Theme.of(sheetContext).textTheme.titleLarge?.copyWith(
-                      fontWeight: FontWeight.w700,
+            ),
+            const SizedBox(height: 16),
+            Text(
+              note == null ? 'New Note' : 'Edit Note',
+              style: Theme.of(
+                sheetContext,
+              ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700),
+            ),
+            const SizedBox(height: 16),
+            TextField(
+              controller: titleController,
+              autofocus: true,
+              textCapitalization: TextCapitalization.sentences,
+              decoration: const InputDecoration(
+                hintText: 'Note title',
+                prefixIcon: Icon(Icons.title, size: 20),
+              ),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: contentController,
+              textCapitalization: TextCapitalization.sentences,
+              maxLines: 5,
+              decoration: const InputDecoration(
+                hintText: 'Write your note...',
+                prefixIcon: Padding(
+                  padding: EdgeInsets.only(bottom: 80),
+                  child: Icon(Icons.notes_outlined, size: 20),
+                ),
+              ),
+            ),
+            const SizedBox(height: 24),
+            Row(
+              children: [
+                if (note != null) ...[
+                  IconButton(
+                    icon: const Icon(
+                      Icons.delete_outline,
+                      color: AppColors.error,
                     ),
-              ),
-              const SizedBox(height: 16),
-              TextField(
-                controller: titleController,
-                autofocus: true,
-                textCapitalization: TextCapitalization.sentences,
-                decoration: const InputDecoration(
-                  hintText: 'Note title',
-                  prefixIcon: Icon(Icons.title, size: 20),
-                ),
-              ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: contentController,
-                textCapitalization: TextCapitalization.sentences,
-                maxLines: 5,
-                decoration: const InputDecoration(
-                  hintText: 'Write your note...',
-                  prefixIcon: Padding(
-                    padding: EdgeInsets.only(bottom: 80),
-                    child: Icon(Icons.notes_outlined, size: 20),
+                    onPressed: () async {
+                      final confirm = await showDialog<bool>(
+                        context: sheetContext,
+                        builder: (context) => AlertDialog(
+                          title: const Text('Delete Note'),
+                          content: const Text(
+                            'Are you sure you want to delete this note?',
+                          ),
+                          actions: [
+                            TextButton(
+                              onPressed: () => Navigator.pop(context, false),
+                              child: const Text('Cancel'),
+                            ),
+                            TextButton(
+                              onPressed: () => Navigator.pop(context, true),
+                              child: const Text(
+                                'Delete',
+                                style: TextStyle(color: AppColors.error),
+                              ),
+                            ),
+                          ],
+                        ),
+                      );
+
+                      if (confirm == true) {
+                        try {
+                          await ref
+                              .read(noteListProvider.notifier)
+                              .deleteNote(note.id);
+                          if (!sheetContext.mounted) return;
+                          Navigator.pop(sheetContext);
+                          if (context.mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(content: Text('Note deleted')),
+                            );
+                          }
+                        } catch (e) {
+                          if (!sheetContext.mounted) return;
+                          ScaffoldMessenger.of(sheetContext).showSnackBar(
+                            SnackBar(
+                              content: Text('Failed to delete note: $e'),
+                            ),
+                          );
+                        }
+                      }
+                    },
+                  ),
+                  const SizedBox(width: 8),
+                ],
+                Expanded(
+                  child: SizedBox(
+                    height: 52,
+                    child: ElevatedButton(
+                      onPressed: () async {
+                        final title = titleController.text.trim();
+                        final content = contentController.text.trim();
+
+                        if (title.isEmpty) {
+                          ScaffoldMessenger.of(sheetContext).showSnackBar(
+                            const SnackBar(
+                              content: Text('Please enter a note title'),
+                            ),
+                          );
+                          return;
+                        }
+
+                        try {
+                          if (note == null) {
+                            await ref
+                                .read(noteListProvider.notifier)
+                                .addNote(title: title, content: content);
+                          } else {
+                            await ref
+                                .read(noteListProvider.notifier)
+                                .updateNote(
+                                  noteId: note.id,
+                                  title: title,
+                                  content: content,
+                                );
+                          }
+
+                          if (!sheetContext.mounted) return;
+                          Navigator.pop(sheetContext);
+
+                          if (context.mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text(
+                                  note == null
+                                      ? 'Note created ✓'
+                                      : 'Note updated ✓',
+                                ),
+                              ),
+                            );
+                          }
+                        } catch (e) {
+                          if (!sheetContext.mounted) return;
+                          ScaffoldMessenger.of(sheetContext).showSnackBar(
+                            SnackBar(content: Text('Failed to save note: $e')),
+                          );
+                        }
+                      },
+                      child: Text(note == null ? 'Save Note' : 'Update Note'),
+                    ),
                   ),
                 ),
-              ),
-              const SizedBox(height: 24),
-              SizedBox(
-                height: 52,
-                child: ElevatedButton(
-                  onPressed: () async {
-                    final title = titleController.text.trim();
-                    final content = contentController.text.trim();
-
-                    if (title.isEmpty) {
-                      ScaffoldMessenger.of(sheetContext).showSnackBar(
-                        const SnackBar(
-                            content: Text('Please enter a note title')),
-                      );
-                      return;
-                    }
-
-                    try {
-                      await ref.read(noteListProvider.notifier).addNote(
-                            title: title,
-                            content: content,
-                          );
-
-                      if (!sheetContext.mounted) return;
-                      Navigator.pop(sheetContext);
-
-                      if (context.mounted) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('Note created ✓')),
-                        );
-                      }
-                    } catch (e) {
-                      if (!sheetContext.mounted) return;
-                      ScaffoldMessenger.of(sheetContext).showSnackBar(
-                        SnackBar(content: Text('Failed to create note: $e')),
-                      );
-                    }
-                  },
-                  child: const Text('Save Note'),
-                ),
-              ),
-            ],
-          ),
-        );
-      },
-    );
-  }
+              ],
+            ),
+          ],
+        ),
+      );
+    },
+  );
 }
 
 class _NoteCard extends StatelessWidget {
@@ -267,16 +362,18 @@ class _NoteCard extends StatelessWidget {
           color: AppColors.error.withValues(alpha: 0.1),
           borderRadius: BorderRadius.circular(16),
         ),
-        child:
-            const Icon(Icons.delete_outline, color: AppColors.error, size: 28),
+        child: const Icon(
+          Icons.delete_outline,
+          color: AppColors.error,
+          size: 28,
+        ),
       ),
       confirmDismiss: (direction) async {
         return await showDialog<bool>(
           context: context,
           builder: (context) => AlertDialog(
             title: const Text('Delete Note'),
-            content:
-                const Text('Are you sure you want to delete this note?'),
+            content: const Text('Are you sure you want to delete this note?'),
             actions: [
               TextButton(
                 onPressed: () => Navigator.pop(context, false),
@@ -284,8 +381,10 @@ class _NoteCard extends StatelessWidget {
               ),
               TextButton(
                 onPressed: () => Navigator.pop(context, true),
-                child: const Text('Delete',
-                    style: TextStyle(color: AppColors.error)),
+                child: const Text(
+                  'Delete',
+                  style: TextStyle(color: AppColors.error),
+                ),
               ),
             ],
           ),
@@ -301,111 +400,131 @@ class _NoteCard extends StatelessWidget {
         );
       },
       child: Card(
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          note.title,
-                          style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                                fontWeight: FontWeight.w600,
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: () => _showNoteEditorSheet(context, ref, note: note),
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            note.title,
+                            style: Theme.of(context).textTheme.titleSmall
+                                ?.copyWith(fontWeight: FontWeight.w600),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            DateFormatter.relative(note.createdAt),
+                            style: Theme.of(context).textTheme.bodySmall
+                                ?.copyWith(color: AppColors.textTertiary),
+                          ),
+                        ],
+                      ),
+                    ),
+                    PopupMenuButton<String>(
+                      icon: const Icon(
+                        Icons.more_vert,
+                        size: 20,
+                        color: AppColors.textSecondary,
+                      ),
+                      padding: EdgeInsets.zero,
+                      onSelected: (value) async {
+                        if (value == 'summarize') {
+                          ref.read(noteAiProvider.notifier).summarizeNote(note);
+                          showModalBottomSheet(
+                            context: context,
+                            isScrollControlled: true,
+                            backgroundColor: Theme.of(
+                              context,
+                            ).scaffoldBackgroundColor,
+                            shape: const RoundedRectangleBorder(
+                              borderRadius: BorderRadius.vertical(
+                                top: Radius.circular(24),
                               ),
+                            ),
+                            builder: (_) => NoteSummarySheet(note: note),
+                          );
+                        } else if (value == 'tasks') {
+                          try {
+                            await ref
+                                .read(noteAiProvider.notifier)
+                                .convertNoteToTasks(note);
+                            if (context.mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text('Note converted to task ✓'),
+                                  behavior: SnackBarBehavior.floating,
+                                  backgroundColor: AppColors.success,
+                                ),
+                              );
+                            }
+                          } catch (e) {
+                            if (context.mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text('Failed to convert note: $e'),
+                                  behavior: SnackBarBehavior.floating,
+                                  backgroundColor: AppColors.error,
+                                ),
+                              );
+                            }
+                          }
+                        }
+                      },
+                      itemBuilder: (context) => [
+                        const PopupMenuItem(
+                          value: 'summarize',
+                          child: Row(
+                            children: [
+                              Icon(
+                                Icons.auto_awesome,
+                                size: 18,
+                                color: AppColors.primary,
+                              ),
+                              SizedBox(width: 8),
+                              Text('Summarize Note'),
+                            ],
+                          ),
                         ),
-                        const SizedBox(height: 2),
-                        Text(
-                          DateFormatter.relative(note.createdAt),
-                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                color: AppColors.textTertiary,
+                        const PopupMenuItem(
+                          value: 'tasks',
+                          child: Row(
+                            children: [
+                              Icon(
+                                Icons.playlist_add_check_rounded,
+                                size: 18,
+                                color: AppColors.success,
                               ),
+                              SizedBox(width: 8),
+                              Text('Convert to Tasks'),
+                            ],
+                          ),
                         ),
                       ],
                     ),
-                  ),
-                  PopupMenuButton<String>(
-                    icon: const Icon(Icons.more_vert, size: 20, color: AppColors.textSecondary),
-                    padding: EdgeInsets.zero,
-                    onSelected: (value) async {
-                      if (value == 'summarize') {
-                        ref.read(noteAiProvider.notifier).summarizeNote(note);
-                        showModalBottomSheet(
-                          context: context,
-                          isScrollControlled: true,
-                          backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-                          shape: const RoundedRectangleBorder(
-                            borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-                          ),
-                          builder: (_) => NoteSummarySheet(note: note),
-                        );
-                      } else if (value == 'tasks') {
-                        try {
-                          await ref.read(noteAiProvider.notifier).convertNoteToTasks(note);
-                          if (context.mounted) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text('Note converted to task ✓'),
-                                behavior: SnackBarBehavior.floating,
-                                backgroundColor: AppColors.success,
-                              ),
-                            );
-                          }
-                        } catch (e) {
-                          if (context.mounted) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: Text('Failed to convert note: $e'),
-                                behavior: SnackBarBehavior.floating,
-                                backgroundColor: AppColors.error,
-                              ),
-                            );
-                          }
-                        }
-                      }
-                    },
-                    itemBuilder: (context) => [
-                      const PopupMenuItem(
-                        value: 'summarize',
-                        child: Row(
-                          children: [
-                            Icon(Icons.auto_awesome, size: 18, color: AppColors.primary),
-                            SizedBox(width: 8),
-                            Text('Summarize Note'),
-                          ],
-                        ),
-                      ),
-                      const PopupMenuItem(
-                        value: 'tasks',
-                        child: Row(
-                          children: [
-                            Icon(Icons.playlist_add_check_rounded, size: 18, color: AppColors.success),
-                            SizedBox(width: 8),
-                            Text('Convert to Tasks'),
-                          ],
-                        ),
-                      ),
-                    ],
+                  ],
+                ),
+                if (note.content.isNotEmpty) ...[
+                  const SizedBox(height: 8),
+                  Text(
+                    note.content,
+                    maxLines: 3,
+                    overflow: TextOverflow.ellipsis,
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: AppColors.textSecondary,
+                      height: 1.5,
+                    ),
                   ),
                 ],
-              ),
-              if (note.content.isNotEmpty) ...[
-                const SizedBox(height: 8),
-                Text(
-                  note.content,
-                  maxLines: 3,
-                  overflow: TextOverflow.ellipsis,
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: AppColors.textSecondary,
-                        height: 1.5,
-                      ),
-                ),
               ],
-            ],
+            ),
           ),
         ),
       ),
