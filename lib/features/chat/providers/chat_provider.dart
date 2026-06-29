@@ -8,8 +8,7 @@ import '../../../core/providers/core_providers.dart';
 
 // ─── Conversation List ─────────────────────────────
 
-class ConversationListNotifier
-    extends AsyncNotifier<List<ConversationModel>> {
+class ConversationListNotifier extends AsyncNotifier<List<ConversationModel>> {
   @override
   Future<List<ConversationModel>> build() async {
     final repo = ref.watch(chatRepositoryProvider);
@@ -46,10 +45,10 @@ class ConversationListNotifier
   }
 }
 
-final conversationListProvider = AsyncNotifierProvider<
-    ConversationListNotifier, List<ConversationModel>>(
-  ConversationListNotifier.new,
-);
+final conversationListProvider =
+    AsyncNotifierProvider<ConversationListNotifier, List<ConversationModel>>(
+      ConversationListNotifier.new,
+    );
 
 // ─── UI State ──────────────────────────────────────
 
@@ -62,8 +61,8 @@ class ActiveConversationIdNotifier extends Notifier<String?> {
 
 final activeConversationIdProvider =
     NotifierProvider<ActiveConversationIdNotifier, String?>(
-  ActiveConversationIdNotifier.new,
-);
+      ActiveConversationIdNotifier.new,
+    );
 
 final isGeneratingProvider = NotifierProvider<IsGeneratingNotifier, bool>(
   IsGeneratingNotifier.new,
@@ -79,14 +78,20 @@ class IsGeneratingNotifier extends Notifier<bool> {
 // ─── Chat Messages (per conversation) ──────────────
 
 /// Provides the message list for a conversation (read-only from Supabase)
-final chatMessagesProvider =
-    FutureProvider.family<List<MessageModel>, String>((ref, conversationId) async {
+final chatMessagesProvider = FutureProvider.family<List<MessageModel>, String>((
+  ref,
+  conversationId,
+) async {
   final repo = ref.watch(chatRepositoryProvider);
   final data = await repo.getMessages(conversationId);
-  debugPrint('[ChatProvider] 📨 Loaded ${data.length} messages for conversation: $conversationId');
+  debugPrint(
+    '[ChatProvider] 📨 Loaded ${data.length} messages for conversation: $conversationId',
+  );
 
   final messages = data.map((e) {
-    debugPrint('[ChatProvider]    → role="${e['role']}", content="${(e['content'] as String?)?.substring(0, (e['content'] as String?)?.length.clamp(0, 60) ?? 0)}..."');
+    debugPrint(
+      '[ChatProvider]    → role="${e['role']}", content="${(e['content'] as String?)?.substring(0, (e['content'] as String?)?.length.clamp(0, 60) ?? 0)}..."',
+    );
     return MessageModel.fromJson(e);
   }).toList();
 
@@ -105,7 +110,9 @@ Future<void> sendChatMessage({
   debugPrint('[ChatProvider] ═══════════════════════════════════════');
   debugPrint('[ChatProvider] 📤 sendChatMessage() START');
   debugPrint('[ChatProvider]    conversationId: $conversationId');
-  debugPrint('[ChatProvider]    content: "${content.substring(0, content.length.clamp(0, 80))}..."');
+  debugPrint(
+    '[ChatProvider]    content: "${content.substring(0, content.length.clamp(0, 80))}..."',
+  );
 
   // 1. Save user message to Supabase
   try {
@@ -114,7 +121,9 @@ Future<void> sendChatMessage({
       role: 'user',
       content: content,
     );
-    debugPrint('[ChatProvider] ✅ Step 1: User message inserted (id: ${userInsertResult['id']})');
+    debugPrint(
+      '[ChatProvider] ✅ Step 1: User message inserted (id: ${userInsertResult['id']})',
+    );
   } catch (e, st) {
     debugPrint('[ChatProvider] ❌ Step 1 FAILED: Could not insert user message');
     debugPrint('[ChatProvider]    Error: $e');
@@ -132,9 +141,10 @@ Future<void> sendChatMessage({
   try {
     // 3. Build Gemini history from saved messages
     final messagesData = await repo.getMessages(conversationId);
-    final messages =
-        messagesData.map((e) => MessageModel.fromJson(e)).toList();
-    debugPrint('[ChatProvider] ✅ Step 3: Loaded ${messages.length} messages for history');
+    final messages = messagesData.map((e) => MessageModel.fromJson(e)).toList();
+    debugPrint(
+      '[ChatProvider] ✅ Step 3: Loaded ${messages.length} messages for history',
+    );
 
     // Build history (all messages except the last user message)
     // Map DB roles to Gemini SDK roles:
@@ -144,7 +154,9 @@ Future<void> sendChatMessage({
         .take(messages.length > 1 ? messages.length - 1 : 0)
         .map((m) {
           // Gemini SDK requires role to be 'user' or 'model'
-          final geminiRole = m.role == MessageRole.assistant ? 'model' : m.role.value;
+          final geminiRole = m.role == MessageRole.assistant
+              ? 'model'
+              : m.role.value;
           return gemini.Content(geminiRole, [gemini.TextPart(m.content)]);
         })
         .toList();
@@ -152,10 +164,16 @@ Future<void> sendChatMessage({
     debugPrint('[ChatProvider]    History entries: ${history.length}');
 
     // 4. Call Gemini
-    debugPrint('[ChatProvider] 📤 Step 4: Calling Gemini sendChatMessage()...');
-    final response = await geminiService.sendChatMessage(content, history);
-    debugPrint('[ChatProvider] ✅ Step 4: Gemini responded (${response.length} chars)');
-    debugPrint('[ChatProvider]    Response preview: "${response.substring(0, response.length.clamp(0, 100))}..."');
+    debugPrint(
+      '[ChatProvider] 📤 Step 4: Calling Gemini sendSmartMessage()...',
+    );
+    final response = await geminiService.sendSmartMessage(content, history);
+    debugPrint(
+      '[ChatProvider] ✅ Step 4: Gemini responded (${response.length} chars)',
+    );
+    debugPrint(
+      '[ChatProvider]    Response preview: "${response.substring(0, response.length.clamp(0, 100))}..."',
+    );
 
     // 5. Save AI response to Supabase with role='assistant' (matches DB schema)
     try {
@@ -164,9 +182,13 @@ Future<void> sendChatMessage({
         role: 'assistant',
         content: response,
       );
-      debugPrint('[ChatProvider] ✅ Step 5: Assistant message inserted (id: ${aiInsertResult['id']})');
+      debugPrint(
+        '[ChatProvider] ✅ Step 5: Assistant message inserted (id: ${aiInsertResult['id']})',
+      );
     } catch (e, st) {
-      debugPrint('[ChatProvider] ❌ Step 5 FAILED: Could not insert assistant message');
+      debugPrint(
+        '[ChatProvider] ❌ Step 5 FAILED: Could not insert assistant message',
+      );
       debugPrint('[ChatProvider]    Error: $e');
       debugPrint('[ChatProvider]    Stack: $st');
       // Try the old 'model' role as fallback
@@ -177,7 +199,9 @@ Future<void> sendChatMessage({
           role: 'model',
           content: response,
         );
-        debugPrint('[ChatProvider]    ✅ Fallback insert with role="model" succeeded');
+        debugPrint(
+          '[ChatProvider]    ✅ Fallback insert with role="model" succeeded',
+        );
       } catch (e2) {
         debugPrint('[ChatProvider]    ❌ Fallback also failed: $e2');
       }
@@ -209,7 +233,9 @@ Future<void> sendChatMessage({
           content: 'Sorry, I encountered an error. Please try again.',
         );
       } catch (e2) {
-        debugPrint('[ChatProvider]    ❌ Could not save error message either: $e2');
+        debugPrint(
+          '[ChatProvider]    ❌ Could not save error message either: $e2',
+        );
       }
     }
   } finally {
@@ -223,7 +249,10 @@ Future<void> sendChatMessage({
 }
 
 Future<void> _autoTitleConversation(
-    WidgetRef ref, String conversationId, String firstMessage) async {
+  WidgetRef ref,
+  String conversationId,
+  String firstMessage,
+) async {
   try {
     final geminiService = ref.read(geminiServiceProvider);
     final title = await geminiService.generateContent(

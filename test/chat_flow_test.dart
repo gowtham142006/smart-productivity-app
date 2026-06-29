@@ -1,3 +1,5 @@
+// ignore_for_file: avoid_print, depend_on_referenced_packages, avoid_relative_lib_imports, unused_import
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -15,16 +17,14 @@ class MockChatRepository implements ChatRepository {
   bool failModelInsert = false;
 
   @override
-  supabase.SupabaseClient get _client => throw UnimplementedError();
-
-  @override
-  String? get _userId => 'test_user_id';
-
+  // _client and _userId are not used in this mock
   @override
   Future<List<Map<String, dynamic>>> getConversations() async => [];
 
   @override
-  Future<Map<String, dynamic>> createConversation({String title = 'New Chat'}) async {
+  Future<Map<String, dynamic>> createConversation({
+    String title = 'New Chat',
+  }) async {
     return {'id': 'test_convo_id', 'title': title};
   }
 
@@ -65,26 +65,7 @@ class MockChatRepository implements ChatRepository {
 }
 
 class MockGeminiService implements GeminiService {
-  @override
-  String get _apiKey => 'test_api_key';
-
-  @override
-  gemini.GenerativeModel get _model => throw UnimplementedError();
-
-  @override
-  DateTime get _lastRequestTime => throw UnimplementedError();
-
-  @override
-  set _lastRequestTime(DateTime val) => throw UnimplementedError();
-
-  @override
-  Set<int> get _inFlightRequests => throw UnimplementedError();
-
-  @override
-  bool _acquireSlot(int requestHash) => true;
-
-  @override
-  void _releaseSlot(int requestHash) {}
+  // Only implement the public methods used by the provider
 
   @override
   Future<String> generateContent(String prompt) async => 'Gemini Title';
@@ -96,13 +77,42 @@ class MockGeminiService implements GeminiService {
   }) async => 'Productivity content';
 
   @override
-  Future<String> sendChatMessage(String message, List<gemini.Content> history) async {
+  Future<Map<String, dynamic>> generateStructuredContent({
+    required String systemInstruction,
+    required String userPrompt,
+  }) async {
+    // Return a simple structured map for tests
+    return {
+      'goal': 'Test Goal',
+      'priority': 'High',
+      'tasks': [
+        {'title': 'Test task 1', 'priority': 'High', 'estimated_minutes': 30},
+      ],
+    };
+  }
+
+  @override
+  Future<String> sendChatMessage(
+    String message,
+    List<gemini.Content> history,
+  ) async {
     return 'Hello, I am Gemini AI.';
+  }
+
+  @override
+  Future<String> sendSmartMessage(
+    String message,
+    List<gemini.Content> history,
+  ) async {
+    // For tests, route smart messages to the chat handler
+    return sendChatMessage(message, history);
   }
 }
 
 void main() {
-  testWidgets('sendChatMessage flow - Scenario 1: Both DB inserts succeed', (tester) async {
+  testWidgets('sendChatMessage flow - Scenario 1: Both DB inserts succeed', (
+    tester,
+  ) async {
     final mockRepo = MockChatRepository();
     final mockGemini = MockGeminiService();
 
@@ -149,55 +159,60 @@ void main() {
     expect(mockRepo.messages[1]['content'], 'Hello, I am Gemini AI.');
   });
 
-  testWidgets('sendChatMessage flow - Scenario 2: Assistant fails, fallback model succeeds', (tester) async {
-    final mockRepo = MockChatRepository();
-    mockRepo.failAssistantInsert = true;
-    final mockGemini = MockGeminiService();
+  testWidgets(
+    'sendChatMessage flow - Scenario 2: Assistant fails, fallback model succeeds',
+    (tester) async {
+      final mockRepo = MockChatRepository();
+      mockRepo.failAssistantInsert = true;
+      final mockGemini = MockGeminiService();
 
-    await tester.pumpWidget(
-      ProviderScope(
-        overrides: [
-          chatRepositoryProvider.overrideWithValue(mockRepo),
-          geminiServiceProvider.overrideWithValue(mockGemini),
-        ],
-        child: MaterialApp(
-          home: Scaffold(
-            body: Consumer(
-              builder: (context, ref, child) {
-                return ElevatedButton(
-                  onPressed: () async {
-                    await sendChatMessage(
-                      ref: ref,
-                      conversationId: 'test_convo_id',
-                      content: 'Hello AI',
-                    );
-                  },
-                  child: const Text('Send'),
-                );
-              },
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            chatRepositoryProvider.overrideWithValue(mockRepo),
+            geminiServiceProvider.overrideWithValue(mockGemini),
+          ],
+          child: MaterialApp(
+            home: Scaffold(
+              body: Consumer(
+                builder: (context, ref, child) {
+                  return ElevatedButton(
+                    onPressed: () async {
+                      await sendChatMessage(
+                        ref: ref,
+                        conversationId: 'test_convo_id',
+                        content: 'Hello AI',
+                      );
+                    },
+                    child: const Text('Send'),
+                  );
+                },
+              ),
             ),
           ),
         ),
-      ),
-    );
+      );
 
-    // Tap the button to trigger flow
-    await tester.tap(find.byType(ElevatedButton));
-    await tester.pumpAndSettle();
+      // Tap the button to trigger flow
+      await tester.tap(find.byType(ElevatedButton));
+      await tester.pumpAndSettle();
 
-    // Check final list of messages in mock repo
-    print('Scenario 2 - Messages in DB:');
-    for (final m in mockRepo.messages) {
-      print('  Role: ${m['role']}, Content: ${m['content']}');
-    }
+      // Check final list of messages in mock repo
+      print('Scenario 2 - Messages in DB:');
+      for (final m in mockRepo.messages) {
+        print('  Role: ${m['role']}, Content: ${m['content']}');
+      }
 
-    expect(mockRepo.messages.length, 2);
-    expect(mockRepo.messages[0]['role'], 'user');
-    expect(mockRepo.messages[1]['role'], 'model'); // Saved as fallback
-    expect(mockRepo.messages[1]['content'], 'Hello, I am Gemini AI.');
-  });
+      expect(mockRepo.messages.length, 2);
+      expect(mockRepo.messages[0]['role'], 'user');
+      expect(mockRepo.messages[1]['role'], 'model'); // Saved as fallback
+      expect(mockRepo.messages[1]['content'], 'Hello, I am Gemini AI.');
+    },
+  );
 
-  testWidgets('sendChatMessage flow - Scenario 3: Both inserts fail', (tester) async {
+  testWidgets('sendChatMessage flow - Scenario 3: Both inserts fail', (
+    tester,
+  ) async {
     final mockRepo = MockChatRepository();
     mockRepo.failAssistantInsert = true;
     mockRepo.failModelInsert = true;

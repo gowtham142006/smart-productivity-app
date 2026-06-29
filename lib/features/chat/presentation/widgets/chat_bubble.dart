@@ -1,18 +1,66 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../data/message_model.dart';
+import '../../../../core/providers/core_providers.dart';
 
-class ChatBubble extends StatelessWidget {
+class ChatBubble extends ConsumerWidget {
   final MessageModel message;
 
   const ChatBubble({super.key, required this.message});
 
   bool get isUser => message.role == MessageRole.user;
 
+  List<String> _extractTasks(String content) {
+    final lines = content.split(RegExp(r"\r?\n"));
+    final tasks = <String>[];
+    for (var l in lines) {
+      final s = l.trim();
+      if (s.isEmpty) continue;
+      // Markdown checkboxes or bullets
+      final patterns = [
+        RegExp(r'^[-*]\s+'),
+        RegExp(r'^\d+\.\s+'),
+        RegExp(r'^•\s+'),
+        RegExp(r'^- \[.?\]\s+'),
+      ];
+      var matched = false;
+      for (var p in patterns) {
+        if (p.hasMatch(s)) {
+          var t = s.replaceAll(p, '').trim();
+          if (t.isNotEmpty) tasks.add(t);
+          matched = true;
+          break;
+        }
+      }
+      // Also accept lines that look like short imperative sentences
+      if (!matched && s.length < 80 && (s.split(' ').length <= 8)) {
+        // Heuristic: start with a verb?
+        final first = s.split(' ').first.toLowerCase();
+        final verbs = [
+          'collect',
+          'revise',
+          'solve',
+          'practice',
+          'read',
+          'write',
+          'plan',
+          'review',
+          'create',
+          'add',
+          'finish',
+        ];
+        if (verbs.contains(first)) tasks.add(s);
+      }
+    }
+    return tasks;
+  }
+
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final tasks = !isUser ? _extractTasks(message.content) : [];
 
     return Align(
       alignment: isUser ? Alignment.centerRight : Alignment.centerLeft,
@@ -26,8 +74,9 @@ class ChatBubble extends StatelessWidget {
           bottom: 8,
         ),
         child: Column(
-          crossAxisAlignment:
-              isUser ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+          crossAxisAlignment: isUser
+              ? CrossAxisAlignment.end
+              : CrossAxisAlignment.start,
           children: [
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
@@ -53,33 +102,67 @@ class ChatBubble extends StatelessWidget {
               child: SelectableText(
                 message.content,
                 style: TextStyle(
-                  color: isUser 
-                      ? Colors.white 
-                      : (isDark ? AppColors.darkTextPrimary : AppColors.textPrimary),
+                  color: isUser
+                      ? Colors.white
+                      : (isDark
+                            ? AppColors.darkTextPrimary
+                            : AppColors.textPrimary),
                   fontSize: 14.5,
                   height: 1.5,
                 ),
               ),
             ),
+
             if (!isUser)
-              Padding(
-                padding: const EdgeInsets.only(top: 4, left: 4),
-                child: GestureDetector(
-                  onTap: () {
-                    Clipboard.setData(ClipboardData(text: message.content));
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Copied to clipboard'),
-                        duration: Duration(seconds: 1),
+              Row(
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.only(top: 4, left: 4),
+                    child: GestureDetector(
+                      onTap: () async {
+                        final messenger = ScaffoldMessenger.of(context);
+                        await Clipboard.setData(
+                          ClipboardData(text: message.content),
+                        );
+                        messenger.showSnackBar(
+                          const SnackBar(
+                            content: Text('Copied to clipboard'),
+                            duration: Duration(seconds: 1),
+                          ),
+                        );
+                      },
+                      child: const Icon(
+                        Icons.copy_rounded,
+                        size: 14,
+                        color: AppColors.textTertiary,
                       ),
-                    );
-                  },
-                  child: const Icon(
-                    Icons.copy_rounded,
-                    size: 14,
-                    color: AppColors.textTertiary,
+                    ),
                   ),
-                ),
+                  const SizedBox(width: 8),
+                  if (tasks.isNotEmpty)
+                    TextButton.icon(
+                      onPressed: () async {
+                        final taskService = ref.read(taskServiceProvider);
+                        final messenger = ScaffoldMessenger.of(context);
+                        try {
+                          for (var t in tasks) {
+                            await taskService.addTask(title: t);
+                          }
+                          messenger.showSnackBar(
+                            SnackBar(
+                              content: Text('Added ${tasks.length} tasks'),
+                            ),
+                          );
+                        } catch (e) {
+                          messenger.showSnackBar(
+                            SnackBar(content: Text('Failed to add tasks: $e')),
+                          );
+                        }
+                      },
+                      icon: const Icon(Icons.add_box_outlined, size: 16),
+                      label: const Text('Add all tasks'),
+                    ),
+                ],
               ),
           ],
         ),

@@ -28,7 +28,9 @@ class TaskFilter {
     bool clearCompleted = false,
   }) {
     return TaskFilter(
-      showCompleted: clearCompleted ? null : (showCompleted ?? this.showCompleted),
+      showCompleted: clearCompleted
+          ? null
+          : (showCompleted ?? this.showCompleted),
       priority: clearPriority ? null : (priority ?? this.priority),
       categoryId: clearCategory ? null : (categoryId ?? this.categoryId),
       sortBy: sortBy ?? this.sortBy,
@@ -73,8 +75,9 @@ class TaskFilterNotifier extends Notifier<TaskFilter> {
   }
 }
 
-final taskFilterProvider =
-    NotifierProvider<TaskFilterNotifier, TaskFilter>(TaskFilterNotifier.new);
+final taskFilterProvider = NotifierProvider<TaskFilterNotifier, TaskFilter>(
+  TaskFilterNotifier.new,
+);
 
 // ─── Task List (AsyncNotifier - Unfiltered master data) ─────────────────────
 
@@ -171,8 +174,8 @@ class AllTasksNotifier extends AsyncNotifier<List<TaskModel>> {
 
 final allTasksProvider =
     AsyncNotifierProvider<AllTasksNotifier, List<TaskModel>>(
-  AllTasksNotifier.new,
-);
+      AllTasksNotifier.new,
+    );
 
 // ─── Filtered Task List (Local in-memory filter & sort) ─────────────────────
 
@@ -185,17 +188,23 @@ final taskListProvider = Provider<AsyncValue<List<TaskModel>>>((ref) {
 
     // Filter by completed status
     if (filters.showCompleted != null) {
-      filtered = filtered.where((t) => t.isCompleted == filters.showCompleted).toList();
+      filtered = filtered
+          .where((t) => t.isCompleted == filters.showCompleted)
+          .toList();
     }
 
-    // Filter by priority
+    // Filter by priority (compare enum value string)
     if (filters.priority != null) {
-      filtered = filtered.where((t) => t.priority == filters.priority).toList();
+      filtered = filtered
+          .where((t) => t.priority.value == filters.priority)
+          .toList();
     }
 
     // Filter by category
     if (filters.categoryId != null) {
-      filtered = filtered.where((t) => t.categoryId == filters.categoryId).toList();
+      filtered = filtered
+          .where((t) => t.categoryId == filters.categoryId)
+          .toList();
     }
 
     // Sort
@@ -221,8 +230,9 @@ final overdueTasksCountProvider = Provider<int>((ref) {
   final tasks = ref.watch(allTasksProvider).value ?? [];
   final now = DateTime.now();
   return tasks
-      .where((t) =>
-          t.dueDate != null && t.dueDate!.isBefore(now) && !t.isCompleted)
+      .where(
+        (t) => t.dueDate != null && t.dueDate!.isBefore(now) && !t.isCompleted,
+      )
       .length;
 });
 
@@ -230,11 +240,13 @@ final todayTasksCountProvider = Provider<int>((ref) {
   final tasks = ref.watch(allTasksProvider).value ?? [];
   final now = DateTime.now();
   return tasks
-      .where((t) =>
-          t.dueDate != null &&
-          t.dueDate!.year == now.year &&
-          t.dueDate!.month == now.month &&
-          t.dueDate!.day == now.day)
+      .where(
+        (t) =>
+            t.dueDate != null &&
+            t.dueDate!.year == now.year &&
+            t.dueDate!.month == now.month &&
+            t.dueDate!.day == now.day,
+      )
       .length;
 });
 
