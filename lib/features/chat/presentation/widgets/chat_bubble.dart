@@ -4,6 +4,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../data/message_model.dart';
 import '../../../../core/providers/core_providers.dart';
+import '../../domain/ai_response_models.dart';
+import 'structured_response_widgets.dart';
 
 class ChatBubble extends ConsumerWidget {
   final MessageModel message;
@@ -60,6 +62,41 @@ class ChatBubble extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    // Check if assistant returned structured JSON
+    if (!isUser) {
+      final parsedModel = parseAIResponse(message.content);
+      if (parsedModel != null) {
+        return Align(
+          alignment: Alignment.centerLeft,
+          child: Container(
+            constraints: BoxConstraints(
+              maxWidth: MediaQuery.of(context).size.width * 0.88,
+            ),
+            margin: const EdgeInsets.only(
+              left: 0,
+              right: 24,
+              bottom: 8,
+            ),
+            child: StructuredResponseWidget(
+              model: parsedModel,
+              onCopyRaw: () async {
+                await Clipboard.setData(ClipboardData(text: message.content));
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Copied raw response'),
+                      duration: Duration(seconds: 1),
+                    ),
+                  );
+                }
+              },
+            ),
+          ),
+        );
+      }
+    }
+
     final tasks = !isUser ? _extractTasks(message.content) : [];
 
     return Align(

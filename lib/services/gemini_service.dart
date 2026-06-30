@@ -172,9 +172,8 @@ class GeminiService {
           systemInstruction: systemInstruction,
           userPrompt: userPrompt,
         );
-        // Convert structured JSON into a readable markdown string for chat display
-        final md = _structuredToMarkdown(intent, data);
-        return md;
+        // Return raw JSON string
+        return json.encode(data);
       } catch (e, st) {
         debugPrint('[GeminiService] ⚠️ Structured JSON parse failed: $e');
         debugPrint(st.toString());
@@ -209,121 +208,6 @@ class GeminiService {
     } catch (e) {
       throw Exception('Invalid JSON: ${e.toString()}\nResponse:\n$text');
     }
-  }
-
-  String _structuredToMarkdown(AIIntent intent, Map<String, dynamic> data) {
-    final buffer = StringBuffer();
-    switch (intent) {
-      case AIIntent.studyPlanner:
-        buffer.writeln('## Study Plan');
-        if (data['goal'] != null) {
-          buffer.writeln('\n**Goal:** ${data['goal']}');
-        }
-        if (data['priority'] != null) {
-          buffer.writeln('\n**Priority:** ${data['priority']}');
-        }
-        if (data['estimated_time_hours'] != null) {
-          buffer.writeln(
-            '\n**Estimated Time:** ${data['estimated_time_hours']} hours',
-          );
-        }
-        if (data['suggested_tasks'] is List) {
-          buffer.writeln('\n**Suggested Tasks:**');
-          for (var t in data['suggested_tasks']) {
-            final title = t['title'] ?? '';
-            final est = t['estimated_hours'] ?? '';
-            buffer.writeln('- $title ${est != '' ? '· $est hrs' : ''}');
-          }
-        }
-        if (data['daily_schedule'] is Map) {
-          buffer.writeln('\n**Daily Schedule:**');
-          (data['daily_schedule'] as Map).forEach((day, tasks) {
-            if (tasks is List && tasks.isNotEmpty) {
-              buffer.writeln('\n**$day**');
-              for (var item in tasks) {
-                buffer.writeln('- $item');
-              }
-            }
-          });
-        }
-        if (data['motivation'] != null) {
-          buffer.writeln('\n**Motivation:** ${data['motivation']}');
-        }
-        break;
-      case AIIntent.taskPlanner:
-      case AIIntent.taskGeneration:
-      case AIIntent.convertNotesToTasks:
-        buffer.writeln('## Tasks');
-        if (data['goal'] != null) {
-          buffer.writeln('\n**Goal:** ${data['goal']}');
-        }
-        if (data['priority'] != null) {
-          buffer.writeln('\n**Priority:** ${data['priority']}');
-        }
-        if (data['tasks'] is List) {
-          for (var t in data['tasks']) {
-            final title = t['title'] ?? t.toString();
-            final desc = t['description'] ?? '';
-            final est = t['estimated_minutes'] ?? t['estimated_minutes'] ?? '';
-            final deadline = t['suggested_deadline'] ?? t['due_date'] ?? '';
-            final estPart = est != '' ? ' · ${est}m' : '';
-            final deadlinePart = deadline != '' ? ' · due $deadline' : '';
-            buffer.writeln(
-              '- $title${desc != '' ? ': $desc' : ''}$estPart$deadlinePart',
-            );
-          }
-        }
-        break;
-      case AIIntent.noteSummarization:
-        buffer.writeln('## Summary');
-        if (data['summary'] != null) buffer.writeln('\n${data['summary']}');
-        if (data['key_points'] is List) {
-          buffer.writeln('\n**Key Points:**');
-          for (var k in data['key_points']) {
-            buffer.writeln('- $k');
-          }
-        }
-        if (data['action_items'] is List) {
-          buffer.writeln('\n**Action Items:**');
-          for (var a in data['action_items']) {
-            buffer.writeln(
-              '- ${a['title']}${a['description'] != null ? ': ${a['description']}' : ''}',
-            );
-          }
-        }
-        break;
-      case AIIntent.productivityCoach:
-        buffer.writeln('## Productivity Coach');
-        if (data['todays_focus'] is List) {
-          buffer.writeln('\n**Today\'s Focus:**');
-          for (var f in data['todays_focus']) {
-            buffer.writeln('- $f');
-          }
-        }
-        if (data['high_priority'] is List) {
-          buffer.writeln('\n**High Priority:**');
-          for (var h in data['high_priority']) {
-            buffer.writeln('- $h');
-          }
-        }
-        if (data['time_management'] is List) {
-          buffer.writeln('\n**Time Management:**');
-          for (var t in data['time_management']) {
-            buffer.writeln('- $t');
-          }
-        }
-        if (data['tips'] is List) {
-          buffer.writeln('\n**Tips:**');
-          for (var tip in data['tips']) {
-            buffer.writeln('- $tip');
-          }
-        }
-        break;
-      default:
-        buffer.writeln(json.encode(data));
-    }
-
-    return buffer.toString().trim();
   }
 
   /// Structured productivity prompt with system instruction
