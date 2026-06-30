@@ -213,10 +213,8 @@ Future<void> sendChatMessage({
       _autoTitleConversation(ref, conversationId, content);
     }
   } catch (e, st) {
-    debugPrint('[ChatProvider] ❌ Chat error at Gemini/save step');
-    debugPrint('[ChatProvider]    Error type: ${e.runtimeType}');
-    debugPrint('[ChatProvider]    Error: $e');
-    debugPrint('[ChatProvider]    Stack: $st');
+    debugPrint('Gemini Error: $e');
+    debugPrintStack(stackTrace: st);
 
     // Save error message so user sees feedback — try 'assistant' first, then 'model'
     try {

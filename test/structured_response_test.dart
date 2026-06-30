@@ -80,4 +80,54 @@ void main() {
       expect(coach.tips, contains("Stay hydrated"));
     });
   });
+
+  group('Schema Validation Errors', () {
+    test('throws on missing field', () {
+      const json = '''
+      {
+        "goal": "Revise Biology",
+        "priority": "High",
+        "suggested_tasks": [{"title": "Read chapter 1", "estimated_hours": "2"}],
+        "daily_schedule": {"Monday": ["Read chapter 1"]},
+        "important_topics": ["Genetics"],
+        "revision_plan": ["Do practice test"],
+        "motivation": "You can do it!"
+      }
+      ''';
+      expect(() => parseAIResponse(json), throwsA(isA<FormatException>()));
+    });
+
+    test('throws on unexpected field', () {
+      const json = '''
+      {
+        "goal": "Revise Biology",
+        "priority": "High",
+        "suggested_tasks": [{"title": "Read chapter 1", "estimated_hours": "2"}],
+        "estimated_time_hours": "5",
+        "daily_schedule": {"Monday": ["Read chapter 1"]},
+        "important_topics": ["Genetics"],
+        "revision_plan": ["Do practice test"],
+        "motivation": "You can do it!",
+        "unexpected_key": "some value"
+      }
+      ''';
+      expect(() => parseAIResponse(json), throwsA(isA<FormatException>()));
+    });
+
+    test('throws on invalid field type', () {
+      const json = '''
+      {
+        "goal": "Revise Biology",
+        "priority": {"level": "High"},
+        "suggested_tasks": [{"title": "Read chapter 1", "estimated_hours": "2"}],
+        "estimated_time_hours": "5",
+        "daily_schedule": {"Monday": ["Read chapter 1"]},
+        "important_topics": ["Genetics"],
+        "revision_plan": ["Do practice test"],
+        "motivation": "You can do it!"
+      }
+      ''';
+      expect(() => parseAIResponse(json), throwsA(isA<FormatException>()));
+    });
+  });
 }

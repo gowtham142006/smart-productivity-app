@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:google_generative_ai/google_generative_ai.dart';
 import '../core/ai/prompts.dart';
 import '../core/ai/intent_detector.dart';
+import '../features/chat/domain/ai_response_models.dart';
 import 'dart:convert';
 
 /// Model name constant — single source of truth
@@ -145,16 +146,44 @@ class GeminiService {
   /// Smart entry point: detect intent and route to the correct prompt flow.
   Future<String> sendSmartMessage(String message, List<Content> history) async {
     final intent = detectIntent(message);
+    debugPrint('----------------- AI REQUEST DIAGNOSTICS -----------------');
+    debugPrint('Intent detected: $intent');
+    debugPrint('Detected intent confidence: N/A (Rule-based Keyword Detection)');
 
     // For plain chat, keep multi-turn chat behavior
     if (intent == AIIntent.generalChat) {
-      return sendChatMessage(message, history);
+      debugPrint('Gemini model name: $_kModelName');
+      debugPrint('System prompt: ${Prompts.system[AIIntent.generalChat]}');
+      debugPrint('User prompt: $message');
+      debugPrint('Gemini request sent (General Chat)...');
+      try {
+        final response = await sendChatMessage(message, history);
+        debugPrint('Gemini response received (General Chat). Length: ${response.length}');
+        debugPrint('Raw Gemini response:\n$response');
+        debugPrint('----------------------------------------------------------');
+        return response;
+      } catch (e, st) {
+        debugPrint('Gemini Error (General Chat): $e');
+        String? httpStatus;
+        if (e.toString().contains('400') || e.toString().contains('statusCode: 400')) httpStatus = '400';
+        if (e.toString().contains('429') || e.toString().contains('statusCode: 429')) httpStatus = '429';
+        if (e.toString().contains('500') || e.toString().contains('statusCode: 500')) httpStatus = '500';
+        if (httpStatus != null) debugPrint('HTTP status code: $httpStatus');
+        debugPrintStack(stackTrace: st);
+        debugPrint('----------------------------------------------------------');
+        rethrow;
+      }
     }
 
     // For productivity intents, construct a system instruction and user prompt
     final systemInstruction =
         Prompts.system[intent] ?? Prompts.system[AIIntent.generalChat]!;
     final userPrompt = '${Prompts.userStyleInstructions}\n\nUser: $message';
+
+    debugPrint('Prompt built for intent: $intent');
+    debugPrint('System prompt:\n$systemInstruction');
+    debugPrint('User prompt:\n$userPrompt');
+    debugPrint('Gemini model name: $_kModelName');
 
     // For intents requiring structured JSON, request JSON and validate it.
     final structuredIntents = {
@@ -168,27 +197,50 @@ class GeminiService {
 
     if (structuredIntents.contains(intent)) {
       try {
+        debugPrint('Gemini request sent (Structured Content)...');
         final Map<String, dynamic> data = await generateStructuredContent(
           systemInstruction: systemInstruction,
           userPrompt: userPrompt,
         );
-        // Return raw JSON string
-        return json.encode(data);
+        final rawResponse = json.encode(data);
+        debugPrint('Gemini response received (Structured Content). Length: ${rawResponse.length}');
+        debugPrint('Raw Gemini response:\n$rawResponse');
+        debugPrint('----------------------------------------------------------');
+        return rawResponse;
       } catch (e, st) {
-        debugPrint('[GeminiService] ⚠️ Structured JSON parse failed: $e');
-        debugPrint(st.toString());
-        // Fallback: return raw text from the model
-        return await generateProductivityContent(
-          systemInstruction: systemInstruction,
-          userPrompt: userPrompt,
-        );
+        debugPrint('Gemini Error (Structured Content): $e');
+        String? httpStatus;
+        if (e.toString().contains('400') || e.toString().contains('statusCode: 400')) httpStatus = '400';
+        if (e.toString().contains('429') || e.toString().contains('statusCode: 429')) httpStatus = '429';
+        if (e.toString().contains('500') || e.toString().contains('statusCode: 500')) httpStatus = '500';
+        if (httpStatus != null) debugPrint('HTTP status code: $httpStatus');
+        debugPrintStack(stackTrace: st);
+        debugPrint('----------------------------------------------------------');
+        rethrow;
       }
     }
 
-    return generateProductivityContent(
-      systemInstruction: systemInstruction,
-      userPrompt: userPrompt,
-    );
+    try {
+      debugPrint('Gemini request sent (Productivity Content)...');
+      final response = await generateProductivityContent(
+        systemInstruction: systemInstruction,
+        userPrompt: userPrompt,
+      );
+      debugPrint('Gemini response received (Productivity Content). Length: ${response.length}');
+      debugPrint('Raw Gemini response:\n$response');
+      debugPrint('----------------------------------------------------------');
+      return response;
+    } catch (e, st) {
+      debugPrint('Gemini Error (Productivity Content): $e');
+      String? httpStatus;
+      if (e.toString().contains('400') || e.toString().contains('statusCode: 400')) httpStatus = '400';
+      if (e.toString().contains('429') || e.toString().contains('statusCode: 429')) httpStatus = '429';
+      if (e.toString().contains('500') || e.toString().contains('statusCode: 500')) httpStatus = '500';
+      if (httpStatus != null) debugPrint('HTTP status code: $httpStatus');
+      debugPrintStack(stackTrace: st);
+      debugPrint('----------------------------------------------------------');
+      rethrow;
+    }
   }
 
   /// Request productivity content and parse JSON. Throws on invalid JSON.
@@ -201,12 +253,17 @@ class GeminiService {
       userPrompt: userPrompt,
     );
 
+    debugPrint('JSON cleaned: attempting to decode...');
     try {
-      final decoded = json.decode(text);
+      final cleanedText = extractJson(text) ?? text;
+      final decoded = json.decode(cleanedText);
+      debugPrint('JSON decoded successfully.');
       if (decoded is Map<String, dynamic>) return decoded;
-      throw Exception('Expected JSON object at top level');
-    } catch (e) {
-      throw Exception('Invalid JSON: ${e.toString()}\nResponse:\n$text');
+      throw FormatException('Expected JSON object at top level, but got: ${decoded.runtimeType}');
+    } catch (e, st) {
+      debugPrint('JSON parsing errors / Exceptions from jsonDecode(): $e');
+      debugPrintStack(stackTrace: st);
+      rethrow;
     }
   }
 

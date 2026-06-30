@@ -65,32 +65,94 @@ class ChatBubble extends ConsumerWidget {
 
     // Check if assistant returned structured JSON
     if (!isUser) {
-      final parsedModel = parseAIResponse(message.content);
-      if (parsedModel != null) {
+      try {
+        final parsedModel = parseAIResponse(message.content);
+        if (parsedModel != null) {
+          debugPrint('Structured widget selected: ${parsedModel.runtimeType}');
+          final widget = Align(
+            alignment: Alignment.centerLeft,
+            child: Container(
+              constraints: BoxConstraints(
+                maxWidth: MediaQuery.of(context).size.width * 0.88,
+              ),
+              margin: const EdgeInsets.only(
+                left: 0,
+                right: 24,
+                bottom: 8,
+              ),
+              child: StructuredResponseWidget(
+                model: parsedModel,
+                onCopyRaw: () async {
+                  await Clipboard.setData(ClipboardData(text: message.content));
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Copied raw response'),
+                        duration: Duration(seconds: 1),
+                      ),
+                    );
+                  }
+                },
+              ),
+            ),
+          );
+          debugPrint('Final widget rendered: ${parsedModel.runtimeType}');
+          return widget;
+        }
+      } catch (e, st) {
+        debugPrint('Exceptions while rendering structured responses: $e');
+        debugPrintStack(stackTrace: st);
+
+        // Render detailed validation error container
         return Align(
           alignment: Alignment.centerLeft,
           child: Container(
             constraints: BoxConstraints(
               maxWidth: MediaQuery.of(context).size.width * 0.88,
             ),
-            margin: const EdgeInsets.only(
-              left: 0,
-              right: 24,
-              bottom: 8,
+            margin: const EdgeInsets.only(right: 24, bottom: 8),
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: AppColors.error.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: AppColors.error),
             ),
-            child: StructuredResponseWidget(
-              model: parsedModel,
-              onCopyRaw: () async {
-                await Clipboard.setData(ClipboardData(text: message.content));
-                if (context.mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Copied raw response'),
-                      duration: Duration(seconds: 1),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: const [
+                    Icon(Icons.error_outline_rounded, color: AppColors.error),
+                    SizedBox(width: 8),
+                    Text(
+                      'AI Response Validation Failure',
+                      style: TextStyle(color: AppColors.error, fontWeight: FontWeight.bold),
                     ),
-                  );
-                }
-              },
+                  ],
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  e.toString(),
+                  style: TextStyle(
+                    color: isDark ? AppColors.darkTextPrimary : AppColors.textPrimary,
+                    fontSize: 13,
+                    fontFamily: 'monospace',
+                  ),
+                ),
+                const SizedBox(height: 8),
+                const Text(
+                  'Falling back to raw response text:',
+                  style: TextStyle(color: AppColors.textSecondary, fontSize: 11, fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 4),
+                SelectableText(
+                  message.content,
+                  style: TextStyle(
+                    color: isDark ? AppColors.darkTextSecondary : AppColors.textSecondary,
+                    fontSize: 12,
+                  ),
+                ),
+              ],
             ),
           ),
         );

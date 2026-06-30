@@ -14,6 +14,7 @@ Future<void> _addSingleTask(
   DateTime? dueDate,
 }) async {
   final messenger = ScaffoldMessenger.of(context);
+  debugPrint('Supabase task insertion triggered (Single): title="$title", description="$description", priority="$priority", dueDate=$dueDate');
   try {
     await ref.read(taskServiceProvider).addTask(
       title: title,
@@ -21,6 +22,7 @@ Future<void> _addSingleTask(
       priority: priority.toLowerCase().trim(),
       dueDate: dueDate,
     );
+    debugPrint('Supabase task insertion completed successfully.');
     messenger.showSnackBar(
       SnackBar(
         content: Text('Added task: "$title"'),
@@ -28,7 +30,9 @@ Future<void> _addSingleTask(
         behavior: SnackBarBehavior.floating,
       ),
     );
-  } catch (e) {
+  } catch (e, st) {
+    debugPrint('Supabase task insertion failed: $e');
+    debugPrintStack(stackTrace: st);
     messenger.showSnackBar(
       SnackBar(
         content: Text('Failed to add task: $e'),
@@ -48,6 +52,12 @@ Future<void> _addAllTasks(
   final messenger = ScaffoldMessenger.of(context);
   int count = 0;
   
+  debugPrint('Supabase task insertion triggered (Batch): totalTasks=${tasks.length}');
+  for (var i = 0; i < tasks.length; i++) {
+    final t = tasks[i];
+    debugPrint('  Task[$i]: title="${t['title']}", priority="${t['priority']}", dueDate=${t['dueDate']}');
+  }
+
   // Show a loading snackbar or indicator
   messenger.showSnackBar(
     const SnackBar(
@@ -67,6 +77,7 @@ Future<void> _addAllTasks(
       );
       count++;
     }
+    debugPrint('Supabase task insertion completed successfully. Added $count tasks.');
     messenger.showSnackBar(
       SnackBar(
         content: Text('Successfully imported $count tasks!'),
@@ -74,7 +85,9 @@ Future<void> _addAllTasks(
         behavior: SnackBarBehavior.floating,
       ),
     );
-  } catch (e) {
+  } catch (e, st) {
+    debugPrint('Supabase task insertion failed at index $count: $e');
+    debugPrintStack(stackTrace: st);
     messenger.showSnackBar(
       SnackBar(
         content: Text('Imported $count tasks. Error adding remaining: $e'),
