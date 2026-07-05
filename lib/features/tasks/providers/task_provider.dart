@@ -1,7 +1,10 @@
 import 'dart:async';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../data/task_model.dart';
 import '../../../core/providers/core_providers.dart';
+import '../../../services/notification_service.dart';
+
 
 // ─── Task Filter State ─────────────────────────────
 
@@ -104,6 +107,15 @@ class AllTasksNotifier extends AsyncNotifier<List<TaskModel>> {
       categoryId: categoryId,
       dueDate: dueDate,
     );
+
+    // Auto-schedule notification if due date is set (Decision #7)
+    if (dueDate != null) {
+      _scheduleTaskNotification(title.hashCode, title, dueDate);
+    }
+
+    // Update daily stats
+    _incrementDailyStat('tasks_created');
+
     ref.invalidateSelf();
   }
 
@@ -120,6 +132,12 @@ class AllTasksNotifier extends AsyncNotifier<List<TaskModel>> {
     try {
       final service = ref.read(taskServiceProvider);
       await service.updateTaskStatus(taskId, isCompleted);
+
+      // Cancel notification when completed, update daily stats
+      if (isCompleted) {
+        _cancelTaskNotification(taskId.hashCode);
+        _incrementDailyStat('tasks_completed');
+      }
     } catch (e) {
       // Revert on failure
       state = AsyncData(previous);
@@ -131,6 +149,9 @@ class AllTasksNotifier extends AsyncNotifier<List<TaskModel>> {
     // Optimistic update
     final previous = state.value ?? [];
     state = AsyncData(previous.where((t) => t.id != taskId).toList());
+
+    // Cancel notification on delete (Decision #7)
+    _cancelTaskNotification(taskId.hashCode);
 
     try {
       final service = ref.read(taskServiceProvider);
@@ -164,13 +185,73 @@ class AllTasksNotifier extends AsyncNotifier<List<TaskModel>> {
       clearDueDate: clearDueDate,
       clearCategory: clearCategory,
     );
+
+    // Update notification based on due date changes (Decision #7)
+    if (clearDueDate) {
+      _cancelTaskNotification(taskId.hashCode);
+    } else if (dueDate != null) {
+      final taskTitle = title ??
+          (state.value
+                  ?.firstWhere((t) => t.id == taskId,
+                      orElse: () => TaskModel(
+                          id: '',
+                          title: 'Task',
+                          description: '',
+                          isCompleted: false,
+                          createdAt: DateTime.now(),
+                          updatedAt: DateTime.now()))
+                  .title ??
+              'Task');
+      _scheduleTaskNotification(taskId.hashCode, taskTitle, dueDate);
+    }
+
     ref.invalidateSelf();
   }
 
   Future<void> refresh() async {
     ref.invalidateSelf();
   }
+
+  // ─── Notification helpers (Decision #7) ───────────────
+
+  void _scheduleTaskNotification(
+      int id, String title, DateTime dueDate) {
+    try {
+      final notifService = NotificationService();
+      // Schedule 30 minutes before due
+      final notifTime =
+          dueDate.subtract(const Duration(minutes: 30));
+      notifService.scheduleNotification(
+        id: id,
+        title: 'Task Due Soon ⏰',
+        body: title,
+        scheduledTime: notifTime,
+        payload: 'task:$id',
+      );
+    } catch (e) {
+      debugPrint('[TaskProvider] Error scheduling notification: $e');
+    }
+  }
+
+  void _cancelTaskNotification(int id) {
+    try {
+      final notifService = NotificationService();
+      notifService.cancelNotification(id);
+    } catch (e) {
+      debugPrint('[TaskProvider] Error cancelling notification: $e');
+    }
+  }
+
+  void _incrementDailyStat(String field) {
+    try {
+      final statsService = ref.read(dailyStatsServiceProvider);
+      statsService.incrementStat(field);
+    } catch (e) {
+      debugPrint('[TaskProvider] Error updating daily stat: $e');
+    }
+  }
 }
+
 
 final allTasksProvider =
     AsyncNotifierProvider<AllTasksNotifier, List<TaskModel>>(
