@@ -6,6 +6,10 @@ import '../../services/task_service.dart';
 import '../../services/note_service.dart';
 import '../../services/category_service.dart';
 import '../../services/gemini_service.dart';
+import '../../services/habit_service.dart';
+import '../../services/daily_stats_service.dart';
+import '../../services/profile_service.dart';
+import '../../services/notification_service.dart';
 import '../../features/chat/domain/chat_repository.dart';
 
 // ─── Core Dependency Providers ─────────────────────
@@ -40,6 +44,22 @@ final chatRepositoryProvider = Provider<ChatRepository>((ref) {
   return ChatRepository(ref.watch(supabaseClientProvider));
 });
 
+final habitServiceProvider = Provider<HabitService>((ref) {
+  return HabitService(ref.watch(supabaseClientProvider));
+});
+
+final dailyStatsServiceProvider = Provider<DailyStatsService>((ref) {
+  return DailyStatsService(ref.watch(supabaseClientProvider));
+});
+
+final profileServiceProvider = Provider<ProfileService>((ref) {
+  return ProfileService(ref.watch(supabaseClientProvider));
+});
+
+final notificationServiceProvider = Provider<NotificationService>((ref) {
+  return NotificationService();
+});
+
 // ─── Auth State ────────────────────────────────────
 
 final authStateProvider = StreamProvider<AuthState>((ref) {
@@ -50,3 +70,4 @@ final authStateProvider = StreamProvider<AuthState>((ref) {
 final currentUserProvider = Provider<User?>((ref) {
   return ref.watch(supabaseClientProvider).auth.currentUser;
 });
+

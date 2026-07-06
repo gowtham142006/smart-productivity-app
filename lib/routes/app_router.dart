@@ -13,6 +13,10 @@ import '../features/chat/presentation/screens/chat_screen.dart';
 import '../features/tasks/presentation/screens/tasks_screen.dart';
 import '../features/notes/presentation/screens/notes_screen.dart';
 import '../features/profile/presentation/screens/profile_screen.dart';
+import '../features/calendar/presentation/screens/calendar_screen.dart';
+import '../features/habits/presentation/screens/habits_screen.dart';
+import '../features/pomodoro/presentation/screens/pomodoro_screen.dart';
+import '../features/analytics/presentation/screens/analytics_screen.dart';
 import 'shell_scaffold.dart';
 
 /// Converts a Supabase auth state [Stream] into a [Listenable]
@@ -79,7 +83,7 @@ final GoRouter appRouter = GoRouter(
       builder: (context, state) => const ForgotPasswordScreen(),
     ),
 
-    // Main app routes with bottom navigation
+    // Main app routes with bottom navigation (Decision #3: Notes in nav)
     ShellRoute(
       builder: (context, state, child) {
         return ShellScaffold(child: child);
@@ -116,6 +120,24 @@ final GoRouter appRouter = GoRouter(
           ),
         ),
       ],
+    ),
+
+    // Feature routes opened from Home dashboard (Decision #4)
+    GoRoute(
+      path: '/calendar',
+      builder: (context, state) => const CalendarScreen(),
+    ),
+    GoRoute(
+      path: '/habits',
+      builder: (context, state) => const HabitsScreen(),
+    ),
+    GoRoute(
+      path: '/pomodoro',
+      builder: (context, state) => const PomodoroScreen(),
+    ),
+    GoRoute(
+      path: '/analytics',
+      builder: (context, state) => const AnalyticsScreen(),
     ),
   ],
 );

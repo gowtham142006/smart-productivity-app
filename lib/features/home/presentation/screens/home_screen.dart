@@ -125,7 +125,7 @@ class HomeScreen extends ConsumerWidget {
               const AiTaskSuggestions(),
               const SizedBox(height: 16),
 
-              // Quick Actions
+              // Dashboard Modules (Decision #4: Open from Home)
               Text(
                 'Quick Actions',
                 style: Theme.of(context).textTheme.titleMedium?.copyWith(
@@ -134,6 +134,69 @@ class HomeScreen extends ConsumerWidget {
               ),
               const SizedBox(height: 12),
 
+              // Feature Grid — Calendar, Habits, Pomodoro, Analytics
+              Row(
+                children: [
+                  Expanded(
+                    child: _DashboardTile(
+                      title: 'Calendar',
+                      icon: Icons.calendar_month_rounded,
+                      gradient: const LinearGradient(
+                        colors: [Color(0xFF3B82F6), Color(0xFF60A5FA)],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ),
+                      onTap: () => context.push('/calendar'),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: _DashboardTile(
+                      title: 'Habits',
+                      icon: Icons.repeat_rounded,
+                      gradient: const LinearGradient(
+                        colors: [Color(0xFF10B981), Color(0xFF34D399)],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ),
+                      onTap: () => context.push('/habits'),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  Expanded(
+                    child: _DashboardTile(
+                      title: 'Pomodoro',
+                      icon: Icons.timer_rounded,
+                      gradient: const LinearGradient(
+                        colors: [Color(0xFFEF4444), Color(0xFFF87171)],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ),
+                      onTap: () => context.push('/pomodoro'),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: _DashboardTile(
+                      title: 'Analytics',
+                      icon: Icons.insights_rounded,
+                      gradient: const LinearGradient(
+                        colors: [Color(0xFF8B5CF6), Color(0xFFA78BFA)],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ),
+                      onTap: () => context.push('/analytics'),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+
+              // Quick action cards
               _QuickActionCard(
                 title: 'AI Chat',
                 subtitle: 'Ask anything instantly',
@@ -218,6 +281,68 @@ class _StatCard extends StatelessWidget {
                         ),
                   ),
                 ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Dashboard tile for feature access (Decision #4).
+class _DashboardTile extends StatelessWidget {
+  final String title;
+  final IconData icon;
+  final Gradient gradient;
+  final VoidCallback onTap;
+
+  const _DashboardTile({
+    required this.title,
+    required this.icon,
+    required this.gradient,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        height: 100,
+        decoration: BoxDecoration(
+          gradient: gradient,
+          borderRadius: BorderRadius.circular(18),
+          boxShadow: [
+            BoxShadow(
+              color: (gradient as LinearGradient)
+                  .colors
+                  .first
+                  .withValues(alpha: 0.25),
+              blurRadius: 12,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Container(
+              width: 44,
+              height: 44,
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.2),
+                borderRadius: BorderRadius.circular(14),
+              ),
+              child: Icon(icon, color: Colors.white, size: 24),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              title,
+              style: const TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w700,
+                color: Colors.white,
               ),
             ),
           ],
