@@ -1,13 +1,39 @@
 import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:hive_flutter/hive_flutter.dart';
 import '../../tasks/providers/task_provider.dart';
 import '../../notes/providers/note_provider.dart';
 import '../../../core/providers/core_providers.dart';
 
 class DailyPlanNotifier extends AsyncNotifier<String> {
+  static const _boxName = 'settings';
+  static const _planTextKey = 'daily_plan_text';
+  static const _planDateKey = 'daily_plan_date';
+
   @override
   Future<String> build() async {
+    // Restore cached plan if it's from today
+    return _loadCachedPlan();
+  }
+
+  /// Load the cached plan from Hive. Returns empty if no plan for today.
+  String _loadCachedPlan() {
+    try {
+      final box = Hive.box(_boxName);
+      final cachedDate = box.get(_planDateKey, defaultValue: '');
+      final today = DateTime.now().toIso8601String().split('T').first;
+
+      if (cachedDate == today) {
+        final cachedText = box.get(_planTextKey, defaultValue: '');
+        if (cachedText.isNotEmpty) {
+          debugPrint('[DailyPlan] Restored cached plan for $today');
+          return cachedText;
+        }
+      }
+    } catch (e) {
+      debugPrint('[DailyPlan] Error loading cached plan: $e');
+    }
     return '';
   }
 
@@ -50,9 +76,27 @@ class DailyPlanNotifier extends AsyncNotifier<String> {
         userPrompt: userPrompt,
       );
 
-      state = AsyncData(response.trim());
+      final planText = response.trim();
+
+      // Persist to Hive
+      await _savePlan(planText);
+
+      state = AsyncData(planText);
     } catch (e, st) {
       state = AsyncError(e, st);
+    }
+  }
+
+  /// Save plan text and today's date to Hive.
+  Future<void> _savePlan(String text) async {
+    try {
+      final box = Hive.box(_boxName);
+      final today = DateTime.now().toIso8601String().split('T').first;
+      await box.put(_planTextKey, text);
+      await box.put(_planDateKey, today);
+      debugPrint('[DailyPlan] ✅ Plan saved to Hive for $today');
+    } catch (e) {
+      debugPrint('[DailyPlan] Error saving plan: $e');
     }
   }
 
@@ -93,7 +137,16 @@ class DailyPlanNotifier extends AsyncNotifier<String> {
     return buffer.toString();
   }
 
+  /// Clear the plan from state and Hive.
   void clearPlan() {
+    try {
+      final box = Hive.box(_boxName);
+      box.delete(_planTextKey);
+      box.delete(_planDateKey);
+      debugPrint('[DailyPlan] Plan cleared from Hive');
+    } catch (e) {
+      debugPrint('[DailyPlan] Error clearing plan: $e');
+    }
     state = const AsyncData('');
   }
 }
@@ -101,3 +154,4 @@ class DailyPlanNotifier extends AsyncNotifier<String> {
 final dailyPlanProvider = AsyncNotifierProvider<DailyPlanNotifier, String>(
   DailyPlanNotifier.new,
 );
+

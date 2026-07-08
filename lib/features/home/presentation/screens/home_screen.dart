@@ -127,7 +127,7 @@ class HomeScreen extends ConsumerWidget {
 
               // Dashboard Modules (Decision #4: Open from Home)
               Text(
-                'Quick Actions',
+                'Quick Access',
                 style: Theme.of(context).textTheme.titleMedium?.copyWith(
                       fontWeight: FontWeight.w700,
                     ),
@@ -194,38 +194,8 @@ class HomeScreen extends ConsumerWidget {
                   ),
                 ],
               ),
-              const SizedBox(height: 16),
 
-              // Quick action cards
-              _QuickActionCard(
-                title: 'AI Chat',
-                subtitle: 'Ask anything instantly',
-                icon: Icons.smart_toy_rounded,
-                gradient: const LinearGradient(
-                  colors: [Color(0xFF6C63FF), Color(0xFF9D97FF)],
-                ),
-                onTap: () => context.go('/chat'),
-              ),
-              const SizedBox(height: 12),
-              _QuickActionCard(
-                title: 'Tasks',
-                subtitle: '$pendingCount tasks pending',
-                icon: Icons.task_alt_rounded,
-                gradient: const LinearGradient(
-                  colors: [Color(0xFF10B981), Color(0xFF34D399)],
-                ),
-                onTap: () => context.go('/tasks'),
-              ),
-              const SizedBox(height: 12),
-              _QuickActionCard(
-                title: 'Notes',
-                subtitle: '$notesCount notes saved',
-                icon: Icons.note_rounded,
-                gradient: const LinearGradient(
-                  colors: [Color(0xFFF59E0B), Color(0xFFFBBF24)],
-                ),
-                onTap: () => context.go('/notes'),
-              ),
+              const SizedBox(height: 24),
             ],
           ),
         ),
@@ -352,84 +322,3 @@ class _DashboardTile extends StatelessWidget {
   }
 }
 
-class _QuickActionCard extends StatelessWidget {
-  final String title;
-  final String subtitle;
-  final IconData icon;
-  final Gradient gradient;
-  final VoidCallback onTap;
-
-  const _QuickActionCard({
-    required this.title,
-    required this.subtitle,
-    required this.icon,
-    required this.gradient,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.all(18),
-        decoration: BoxDecoration(
-          gradient: gradient,
-          borderRadius: BorderRadius.circular(16),
-          boxShadow: [
-            BoxShadow(
-              color: (gradient as LinearGradient)
-                  .colors
-                  .first
-                  .withValues(alpha: 0.3),
-              blurRadius: 12,
-              offset: const Offset(0, 4),
-            ),
-          ],
-        ),
-        child: Row(
-          children: [
-            Container(
-              width: 48,
-              height: 48,
-              decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.2),
-                borderRadius: BorderRadius.circular(14),
-              ),
-              child: Icon(icon, color: Colors.white, size: 26),
-            ),
-            const SizedBox(width: 16),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    title,
-                    style: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w700,
-                      color: Colors.white,
-                    ),
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    subtitle,
-                    style: TextStyle(
-                      fontSize: 13,
-                      color: Colors.white.withValues(alpha: 0.85),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            Icon(
-              Icons.arrow_forward_ios,
-              size: 16,
-              color: Colors.white.withValues(alpha: 0.7),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
