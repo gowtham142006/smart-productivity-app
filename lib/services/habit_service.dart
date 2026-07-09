@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 class HabitService {
@@ -10,11 +11,35 @@ class HabitService {
   Future<List<Map<String, dynamic>>> getHabits() async {
     if (_userId == null) return [];
 
-    return await _client
-        .from('habits')
-        .select()
-        .eq('user_id', _userId!)
-        .order('created_at', ascending: false);
+    try {
+      return await _client
+          .from('habits')
+          .select()
+          .eq('user_id', _userId!)
+          .order('created_at', ascending: false);
+    } catch (e) {
+      debugPrint('[HabitService] Error fetching habits: $e');
+      rethrow;
+    }
+  }
+
+  /// Get all habit IDs that are completed today — SINGLE query.
+  /// Returns a Set of habit IDs for O(1) lookup.
+  Future<Set<String>> getTodayCompletions() async {
+    if (_userId == null) return {};
+
+    try {
+      final today = DateTime.now().toIso8601String().split('T').first;
+      final results = await _client
+          .from('habit_completions')
+          .select('habit_id')
+          .eq('completed_date', today);
+
+      return results.map<String>((r) => r['habit_id'] as String).toSet();
+    } catch (e) {
+      debugPrint('[HabitService] Error fetching today completions: $e');
+      return {};
+    }
   }
 
   /// Create a new habit.
@@ -26,20 +51,29 @@ class HabitService {
     String color = '#6C63FF',
     int targetDays = 30,
   }) async {
-    if (_userId == null) return;
+    if (_userId == null) {
+      debugPrint('[HabitService] addHabit failed: no userId');
+      return;
+    }
 
-    await _client.from('habits').insert({
-      'user_id': _userId,
-      'title': title,
-      'description': description ?? '',
-      'frequency': frequency,
-      'reminder_time': reminderTime,
-      'color': color,
-      'target_days': targetDays,
-      'current_streak': 0,
-      'best_streak': 0,
-      'is_active': true,
-    });
+    try {
+      await _client.from('habits').insert({
+        'user_id': _userId,
+        'title': title,
+        'description': description ?? '',
+        'frequency': frequency,
+        'reminder_time': reminderTime,
+        'color': color,
+        'target_days': targetDays,
+        'current_streak': 0,
+        'best_streak': 0,
+        'is_active': true,
+      });
+      debugPrint('[HabitService] ✅ Habit "$title" created successfully');
+    } catch (e) {
+      debugPrint('[HabitService] ❌ Error creating habit "$title": $e');
+      rethrow;
+    }
   }
 
   /// Update a habit.

@@ -8,16 +8,27 @@ import '../../../services/notification_service.dart';
 class HabitListNotifier extends AsyncNotifier<List<HabitModel>> {
   @override
   Future<List<HabitModel>> build() async {
-    final service = ref.watch(habitServiceProvider);
-    final data = await service.getHabits();
+    try {
+      final service = ref.watch(habitServiceProvider);
 
-    final habits = <HabitModel>[];
-    for (final json in data) {
-      final completed = await service.isCompletedToday(json['id']);
-      habits.add(HabitModel.fromJson(json, completedToday: completed));
+      // Batch: fetch habits + today's completions in parallel
+      final results = await Future.wait([
+        service.getHabits(),
+        service.getTodayCompletions(),
+      ]);
+
+      final data = results[0] as List<Map<String, dynamic>>;
+      final completedIds = results[1] as Set<String>;
+
+      return data.map((json) {
+        final isCompleted = completedIds.contains(json['id']);
+        return HabitModel.fromJson(json, completedToday: isCompleted);
+      }).toList();
+    } catch (e, st) {
+      debugPrint('[HabitProvider] ❌ Error building habit list: $e');
+      debugPrint('[HabitProvider] Stack: $st');
+      rethrow;
     }
-
-    return habits;
   }
 
   Future<void> addHabit({
@@ -28,38 +39,56 @@ class HabitListNotifier extends AsyncNotifier<List<HabitModel>> {
     String color = '#6C63FF',
     int targetDays = 30,
   }) async {
-    final service = ref.read(habitServiceProvider);
-    await service.addHabit(
-      title: title,
-      description: description,
-      frequency: frequency,
-      reminderTime: reminderTime,
-      color: color,
-      targetDays: targetDays,
-    );
-    ref.invalidateSelf();
+    try {
+      final service = ref.read(habitServiceProvider);
+      await service.addHabit(
+        title: title,
+        description: description,
+        frequency: frequency,
+        reminderTime: reminderTime,
+        color: color,
+        targetDays: targetDays,
+      );
 
-    // Schedule reminder if configured (Decision #8)
-    if (reminderTime != null && reminderTime.isNotEmpty) {
-      await _scheduleReminder(title, reminderTime);
+      // Schedule reminder if configured (Decision #8)
+      if (reminderTime != null && reminderTime.isNotEmpty) {
+        await _scheduleReminder(title, reminderTime);
+      }
+
+      ref.invalidateSelf();
+      await future; // Wait for rebuild to complete
+      debugPrint('[HabitProvider] ✅ Habit added and list refreshed');
+    } catch (e, st) {
+      debugPrint('[HabitProvider] ❌ Error adding habit: $e');
+      debugPrint('[HabitProvider] Stack: $st');
+      rethrow;
     }
   }
 
   Future<void> toggleCompletion(String habitId) async {
-    final service = ref.read(habitServiceProvider);
-    final habits = state.value ?? [];
-    final habit = habits.firstWhere((h) => h.id == habitId);
+    try {
+      final service = ref.read(habitServiceProvider);
+      final habits = state.value ?? [];
+      final habit = habits.firstWhere((h) => h.id == habitId);
 
-    if (habit.isCompletedToday) {
-      await service.uncompleteHabit(habitId);
-    } else {
-      await service.completeHabit(habitId);
+      if (habit.isCompletedToday) {
+        await service.uncompleteHabit(habitId);
+      } else {
+        await service.completeHabit(habitId);
 
-      // Update daily stats (Decision #9)
-      final statsService = ref.read(dailyStatsServiceProvider);
-      await statsService.incrementStat('habits_completed');
+        // Update daily stats (Decision #9)
+        try {
+          final statsService = ref.read(dailyStatsServiceProvider);
+          await statsService.incrementStat('habits_completed');
+        } catch (e) {
+          debugPrint('[HabitProvider] Error updating daily stats: $e');
+        }
+      }
+      ref.invalidateSelf();
+    } catch (e) {
+      debugPrint('[HabitProvider] Error toggling completion: $e');
+      rethrow;
     }
-    ref.invalidateSelf();
   }
 
   Future<void> deleteHabit(String habitId) async {
@@ -71,6 +100,7 @@ class HabitListNotifier extends AsyncNotifier<List<HabitModel>> {
       await service.deleteHabit(habitId);
     } catch (e) {
       state = AsyncData(previous);
+      debugPrint('[HabitProvider] Error deleting habit: $e');
       rethrow;
     }
   }
@@ -86,19 +116,24 @@ class HabitListNotifier extends AsyncNotifier<List<HabitModel>> {
     bool? isActive,
     bool clearReminder = false,
   }) async {
-    final service = ref.read(habitServiceProvider);
-    await service.updateHabit(
-      habitId: habitId,
-      title: title,
-      description: description,
-      frequency: frequency,
-      reminderTime: reminderTime,
-      color: color,
-      targetDays: targetDays,
-      isActive: isActive,
-      clearReminder: clearReminder,
-    );
-    ref.invalidateSelf();
+    try {
+      final service = ref.read(habitServiceProvider);
+      await service.updateHabit(
+        habitId: habitId,
+        title: title,
+        description: description,
+        frequency: frequency,
+        reminderTime: reminderTime,
+        color: color,
+        targetDays: targetDays,
+        isActive: isActive,
+        clearReminder: clearReminder,
+      );
+      ref.invalidateSelf();
+    } catch (e) {
+      debugPrint('[HabitProvider] Error updating habit: $e');
+      rethrow;
+    }
   }
 
   Future<void> refresh() async {
@@ -157,3 +192,4 @@ final habitStreakProvider = Provider.family<int, String>((ref, habitId) {
   final habit = habits.where((h) => h.id == habitId).firstOrNull;
   return habit?.currentStreak ?? 0;
 });
+
