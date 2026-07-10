@@ -110,11 +110,11 @@ class AllTasksNotifier extends AsyncNotifier<List<TaskModel>> {
 
     // Auto-schedule notification if due date is set (Decision #7)
     if (dueDate != null) {
-      _scheduleTaskNotification(title.hashCode, title, dueDate);
+      await _scheduleTaskNotification(title.hashCode, title, dueDate);
     }
 
     // Update daily stats
-    _incrementDailyStat('tasks_created');
+    await _incrementDailyStat('tasks_created');
 
     ref.invalidateSelf();
   }
@@ -135,8 +135,8 @@ class AllTasksNotifier extends AsyncNotifier<List<TaskModel>> {
 
       // Cancel notification when completed, update daily stats
       if (isCompleted) {
-        _cancelTaskNotification(taskId.hashCode);
-        _incrementDailyStat('tasks_completed');
+        await _cancelTaskNotification(taskId.hashCode);
+        await _incrementDailyStat('tasks_completed');
       }
     } catch (e) {
       // Revert on failure
@@ -151,7 +151,7 @@ class AllTasksNotifier extends AsyncNotifier<List<TaskModel>> {
     state = AsyncData(previous.where((t) => t.id != taskId).toList());
 
     // Cancel notification on delete (Decision #7)
-    _cancelTaskNotification(taskId.hashCode);
+    await _cancelTaskNotification(taskId.hashCode);
 
     try {
       final service = ref.read(taskServiceProvider);
@@ -188,7 +188,7 @@ class AllTasksNotifier extends AsyncNotifier<List<TaskModel>> {
 
     // Update notification based on due date changes (Decision #7)
     if (clearDueDate) {
-      _cancelTaskNotification(taskId.hashCode);
+      await _cancelTaskNotification(taskId.hashCode);
     } else if (dueDate != null) {
       final taskTitle = title ??
           (state.value
@@ -202,7 +202,7 @@ class AllTasksNotifier extends AsyncNotifier<List<TaskModel>> {
                           updatedAt: DateTime.now()))
                   .title ??
               'Task');
-      _scheduleTaskNotification(taskId.hashCode, taskTitle, dueDate);
+      await _scheduleTaskNotification(taskId.hashCode, taskTitle, dueDate);
     }
 
     ref.invalidateSelf();
@@ -214,38 +214,55 @@ class AllTasksNotifier extends AsyncNotifier<List<TaskModel>> {
 
   // ─── Notification helpers (Decision #7) ───────────────
 
-  void _scheduleTaskNotification(
-      int id, String title, DateTime dueDate) {
+  Future<void> _scheduleTaskNotification(
+      int id, String title, DateTime dueDate) async {
     try {
       final notifService = NotificationService();
+      
       // Schedule 30 minutes before due
-      final notifTime =
+      final approachingTime =
           dueDate.subtract(const Duration(minutes: 30));
-      notifService.scheduleNotification(
-        id: id,
-        title: 'Task Due Soon ⏰',
-        body: title,
-        scheduledTime: notifTime,
-        payload: 'task:$id',
-      );
+      if (approachingTime.isAfter(DateTime.now())) {
+        await notifService.scheduleNotification(
+          id: id,
+          title: 'Task Due Soon ⏰',
+          body: '$title — due in 30 minutes',
+          scheduledTime: approachingTime,
+          payload: 'task_approaching:$id',
+        );
+        debugPrint('[TaskProvider] Scheduled approaching notification at $approachingTime');
+      }
+
+      // Schedule at due time
+      if (dueDate.isAfter(DateTime.now())) {
+        await notifService.scheduleNotification(
+          id: id + 1,
+          title: 'Task Due Now! 🔴',
+          body: '$title is due now',
+          scheduledTime: dueDate,
+          payload: 'task_due:$id',
+        );
+        debugPrint('[TaskProvider] Scheduled due-time notification at $dueDate');
+      }
     } catch (e) {
       debugPrint('[TaskProvider] Error scheduling notification: $e');
     }
   }
 
-  void _cancelTaskNotification(int id) {
+  Future<void> _cancelTaskNotification(int id) async {
     try {
       final notifService = NotificationService();
-      notifService.cancelNotification(id);
+      await notifService.cancelNotification(id);     // approaching
+      await notifService.cancelNotification(id + 1); // at due time
     } catch (e) {
       debugPrint('[TaskProvider] Error cancelling notification: $e');
     }
   }
 
-  void _incrementDailyStat(String field) {
+  Future<void> _incrementDailyStat(String field) async {
     try {
       final statsService = ref.read(dailyStatsServiceProvider);
-      statsService.incrementStat(field);
+      await statsService.incrementStat(field);
     } catch (e) {
       debugPrint('[TaskProvider] Error updating daily stat: $e');
     }
