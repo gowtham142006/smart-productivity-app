@@ -19,8 +19,9 @@ class NotificationService {
   Future<void> init() async {
     if (_initialized) return;
 
-    // Initialize timezone
+    // Initialize timezone database and set local timezone
     tz_data.initializeTimeZones();
+    _setLocalTimezone();
 
     const androidSettings =
         AndroidInitializationSettings('@mipmap/ic_launcher');
@@ -40,7 +41,38 @@ class NotificationService {
     );
 
     _initialized = true;
-    debugPrint('[NotificationService] Initialized');
+    debugPrint('[NotificationService] Initialized successfully');
+    debugPrint('[NotificationService] Local timezone: ${tz.local.name}');
+  }
+
+  /// Resolve the device's local timezone from UTC offset.
+  void _setLocalTimezone() {
+    try {
+      final now = DateTime.now();
+      final offset = now.timeZoneOffset;
+      
+      // Try common timezone names by offset
+      final locations = tz.timeZoneDatabase.locations;
+      for (final entry in locations.entries) {
+        final location = entry.value;
+        try {
+          final tzNow = tz.TZDateTime.now(location);
+          if (tzNow.timeZoneOffset == offset) {
+            tz.setLocalLocation(location);
+            debugPrint('[NotificationService] Timezone set to: ${location.name}');
+            return;
+          }
+        } catch (_) {
+          continue;
+        }
+      }
+      
+      // Fallback: use UTC offset to find a matching timezone
+      debugPrint('[NotificationService] Using fallback timezone resolution');
+      tz.setLocalLocation(tz.getLocation('Asia/Kolkata'));
+    } catch (e) {
+      debugPrint('[NotificationService] Error setting timezone: $e');
+    }
   }
 
   /// Request notification permissions at runtime.

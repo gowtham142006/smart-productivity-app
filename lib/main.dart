@@ -25,6 +25,7 @@ Future<void> main() async {
   // Initialize notifications (Decision #10: permission_handler)
   final notificationService = NotificationService();
   await notificationService.init();
+  await notificationService.requestPermissions();
 
   runApp(const ProviderScope(child: MyApp()));
 }
