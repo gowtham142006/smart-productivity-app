@@ -185,6 +185,7 @@ class HabitsScreen extends ConsumerWidget {
     final descriptionController = TextEditingController();
     String selectedColor = '#6C63FF';
     String? reminderTime;
+    bool isLoading = false;
 
     final colors = [
       '#6C63FF',
@@ -339,19 +340,43 @@ class HabitsScreen extends ConsumerWidget {
                     width: double.infinity,
                     height: 52,
                     child: ElevatedButton(
-                      onPressed: () {
-                        if (titleController.text.trim().isEmpty) return;
+                      onPressed: isLoading
+                          ? null
+                          : () async {
+                              if (titleController.text.trim().isEmpty) return;
+                              setModalState(() => isLoading = true);
 
-                        ref.read(habitListProvider.notifier).addHabit(
-                              title: titleController.text.trim(),
-                              description:
-                                  descriptionController.text.trim(),
-                              color: selectedColor,
-                              reminderTime: reminderTime,
-                            );
-                        Navigator.pop(context);
-                      },
-                      child: const Text('Create Habit'),
+                              try {
+                                await ref.read(habitListProvider.notifier).addHabit(
+                                      title: titleController.text.trim(),
+                                      description:
+                                          descriptionController.text.trim(),
+                                      color: selectedColor,
+                                      reminderTime: reminderTime,
+                                    );
+                                if (context.mounted) Navigator.pop(context);
+                              } catch (e) {
+                                setModalState(() => isLoading = false);
+                                if (context.mounted) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                      content: Text('Failed to create habit: $e'),
+                                      backgroundColor: Colors.red,
+                                    ),
+                                  );
+                                }
+                              }
+                            },
+                      child: isLoading
+                          ? const SizedBox(
+                              width: 22,
+                              height: 22,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: Colors.white,
+                              ),
+                            )
+                          : const Text('Create Habit'),
                     ),
                   ),
                 ],
