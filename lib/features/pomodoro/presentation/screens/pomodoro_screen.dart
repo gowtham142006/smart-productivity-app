@@ -10,6 +10,7 @@ class PomodoroScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final pomodoro = ref.watch(pomodoroProvider);
+    final settings = ref.watch(pomodoroSettingsProvider);
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
@@ -19,6 +20,13 @@ class PomodoroScreen extends ConsumerWidget {
           icon: const Icon(Icons.arrow_back_rounded),
           onPressed: () => Navigator.pop(context),
         ),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.settings_rounded),
+            onPressed: () => _showSettingsSheet(context, ref),
+            tooltip: 'Timer Settings',
+          ),
+        ],
       ),
       body: SafeArea(
         child: Padding(
@@ -175,7 +183,7 @@ class PomodoroScreen extends ConsumerWidget {
 
               const Spacer(),
 
-              // Session counter
+              // Session counter + settings summary
               Container(
                 padding:
                     const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
@@ -183,20 +191,32 @@ class PomodoroScreen extends ConsumerWidget {
                   color: isDark ? AppColors.darkCard : AppColors.surfaceVariant,
                   borderRadius: BorderRadius.circular(16),
                 ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
+                child: Column(
                   children: [
-                    const Icon(Icons.local_fire_department_rounded,
-                        color: AppColors.warning, size: 20),
-                    const SizedBox(width: 8),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Icon(Icons.local_fire_department_rounded,
+                            color: AppColors.warning, size: 20),
+                        const SizedBox(width: 8),
+                        Text(
+                          '${pomodoro.sessionsCompleted} sessions completed today',
+                          style: TextStyle(
+                            fontWeight: FontWeight.w600,
+                            fontSize: 14,
+                            color: isDark
+                                ? AppColors.darkTextPrimary
+                                : AppColors.textPrimary,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 6),
                     Text(
-                      '${pomodoro.sessionsCompleted} sessions completed today',
+                      '${settings.focusMinutes}m focus · ${settings.shortBreakMinutes}m short · ${settings.longBreakMinutes}m long',
                       style: TextStyle(
-                        fontWeight: FontWeight.w600,
-                        fontSize: 14,
-                        color: isDark
-                            ? AppColors.darkTextPrimary
-                            : AppColors.textPrimary,
+                        fontSize: 12,
+                        color: AppColors.textSecondary,
                       ),
                     ),
                   ],
@@ -208,6 +228,125 @@ class PomodoroScreen extends ConsumerWidget {
           ),
         ),
       ),
+    );
+  }
+
+  void _showSettingsSheet(BuildContext context, WidgetRef ref) {
+    final presets = [15, 25, 30, 45, 60];
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (context) {
+        return Consumer(
+          builder: (context, ref, _) {
+            final settings = ref.watch(pomodoroSettingsProvider);
+
+            return Padding(
+              padding: EdgeInsets.fromLTRB(
+                24, 24, 24,
+                MediaQuery.of(context).viewInsets.bottom + 24,
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Center(
+                    child: Container(
+                      width: 40,
+                      height: 4,
+                      decoration: BoxDecoration(
+                        color: Colors.grey.shade300,
+                        borderRadius: BorderRadius.circular(2),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  Text(
+                    'Timer Settings',
+                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                          fontWeight: FontWeight.w700,
+                        ),
+                  ),
+                  const SizedBox(height: 20),
+
+                  // Quick presets
+                  Text(
+                    'Focus Duration Presets',
+                    style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                          fontWeight: FontWeight.w600,
+                        ),
+                  ),
+                  const SizedBox(height: 10),
+                  Wrap(
+                    spacing: 10,
+                    children: presets.map((minutes) {
+                      final isSelected = settings.focusMinutes == minutes;
+                      return ChoiceChip(
+                        label: Text('$minutes min'),
+                        selected: isSelected,
+                        onSelected: (_) {
+                          ref
+                              .read(pomodoroSettingsProvider.notifier)
+                              .setFocusPreset(minutes);
+                          // Reset timer if idle
+                          final status = ref.read(pomodoroProvider).status;
+                          if (status == PomodoroStatus.idle) {
+                            ref.read(pomodoroProvider.notifier).stop();
+                          }
+                        },
+                        selectedColor: AppColors.primary.withValues(alpha: 0.2),
+                        labelStyle: TextStyle(
+                          color: isSelected ? AppColors.primary : null,
+                          fontWeight:
+                              isSelected ? FontWeight.w700 : FontWeight.w500,
+                        ),
+                      );
+                    }).toList(),
+                  ),
+
+                  const SizedBox(height: 24),
+
+                  // Short break
+                  _SettingsSlider(
+                    label: 'Short Break',
+                    value: settings.shortBreakMinutes,
+                    min: 1,
+                    max: 15,
+                    suffix: 'min',
+                    onChanged: (v) {
+                      ref
+                          .read(pomodoroSettingsProvider.notifier)
+                          .updateSettings(shortBreakMinutes: v);
+                    },
+                  ),
+
+                  const SizedBox(height: 16),
+
+                  // Long break
+                  _SettingsSlider(
+                    label: 'Long Break',
+                    value: settings.longBreakMinutes,
+                    min: 5,
+                    max: 30,
+                    suffix: 'min',
+                    onChanged: (v) {
+                      ref
+                          .read(pomodoroSettingsProvider.notifier)
+                          .updateSettings(longBreakMinutes: v);
+                    },
+                  ),
+
+                  const SizedBox(height: 20),
+                ],
+              ),
+            );
+          },
+        );
+      },
     );
   }
 
@@ -373,5 +512,74 @@ class _TimerPainter extends CustomPainter {
   bool shouldRepaint(covariant _TimerPainter oldDelegate) {
     return oldDelegate.progress != progress ||
         oldDelegate.color != color;
+  }
+}
+
+/// Slider widget for the settings bottom sheet.
+class _SettingsSlider extends StatelessWidget {
+  final String label;
+  final int value;
+  final int min;
+  final int max;
+  final String suffix;
+  final ValueChanged<int> onChanged;
+
+  const _SettingsSlider({
+    required this.label,
+    required this.value,
+    required this.min,
+    required this.max,
+    required this.suffix,
+    required this.onChanged,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              label,
+              style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                    fontWeight: FontWeight.w600,
+                  ),
+            ),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+              decoration: BoxDecoration(
+                color: AppColors.primary.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Text(
+                '$value $suffix',
+                style: const TextStyle(
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.primary,
+                  fontSize: 13,
+                ),
+              ),
+            ),
+          ],
+        ),
+        SliderTheme(
+          data: SliderThemeData(
+            activeTrackColor: AppColors.primary,
+            inactiveTrackColor: AppColors.primary.withValues(alpha: 0.15),
+            thumbColor: AppColors.primary,
+            overlayColor: AppColors.primary.withValues(alpha: 0.1),
+          ),
+          child: Slider(
+            min: min.toDouble(),
+            max: max.toDouble(),
+            value: value.toDouble(),
+            divisions: max - min,
+            onChanged: (v) => onChanged(v.round()),
+          ),
+        ),
+      ],
+    );
   }
 }
