@@ -11,9 +11,8 @@ class AnalyticsScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final statsAsync = ref.watch(analyticsProvider);
+    final analyticsAsync = ref.watch(fullAnalyticsProvider);
     final insightAsync = ref.watch(aiInsightProvider);
-    final weeklyScore = ref.watch(weeklyProductivityProvider);
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
@@ -27,76 +26,178 @@ class AnalyticsScreen extends ConsumerWidget {
           IconButton(
             icon: const Icon(Icons.refresh_rounded),
             onPressed: () {
-              ref.read(analyticsProvider.notifier).refresh();
+              ref.invalidate(fullAnalyticsProvider);
               ref.read(aiInsightProvider.notifier).refreshInsight();
             },
           ),
         ],
       ),
-      body: statsAsync.when(
-        data: (stats) => SingleChildScrollView(
+      body: analyticsAsync.when(
+        data: (data) => SingleChildScrollView(
           padding: const EdgeInsets.all(20),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Weekly Score Card
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(24),
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [
-                      _scoreColor(weeklyScore),
-                      _scoreColor(weeklyScore).withValues(alpha: 0.7),
-                    ],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
+              // ═══ Productivity Score Cards ═══
+              Row(
+                children: [
+                  Expanded(
+                    child: _ScoreCard(
+                      label: 'Weekly',
+                      score: data.weeklyProductivityScore,
+                    ),
                   ),
-                  borderRadius: BorderRadius.circular(20),
-                  boxShadow: [
-                    BoxShadow(
-                      color: _scoreColor(weeklyScore)
-                          .withValues(alpha: 0.3),
-                      blurRadius: 20,
-                      offset: const Offset(0, 8),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: _ScoreCard(
+                      label: 'Monthly',
+                      score: data.monthlyProductivityScore,
                     ),
-                  ],
-                ),
-                child: Column(
-                  children: [
-                    Text(
-                      'Weekly Productivity',
-                      style: TextStyle(
-                        color: Colors.white.withValues(alpha: 0.9),
-                        fontSize: 14,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    Text(
-                      '$weeklyScore',
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 56,
-                        fontWeight: FontWeight.w800,
-                      ),
-                    ),
-                    Text(
-                      _scoreLabel(weeklyScore),
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ],
-                ),
+                  ),
+                ],
               ),
 
               const SizedBox(height: 24),
 
-              // AI Insight Card (Decision #6)
-              _SectionTitle(title: 'AI Insight', icon: Icons.auto_awesome_rounded),
+              // ═══ Task Overview ═══
+              _SectionTitle(
+                  title: 'Task Overview', icon: Icons.task_alt_rounded),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  Expanded(
+                    child: _MiniStatCard(
+                      label: 'Completed',
+                      value: '${data.completedTasks}',
+                      icon: Icons.check_circle_rounded,
+                      color: AppColors.success,
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: _MiniStatCard(
+                      label: 'Pending',
+                      value: '${data.pendingTasks}',
+                      icon: Icons.pending_rounded,
+                      color: AppColors.info,
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: _MiniStatCard(
+                      label: 'Overdue',
+                      value: '${data.overdueTasks}',
+                      icon: Icons.warning_amber_rounded,
+                      color: AppColors.error,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 10),
+              _MiniStatCard(
+                label: 'Completed Today',
+                value: '${data.todayCompletedTasks}',
+                icon: Icons.today_rounded,
+                color: AppColors.primary,
+                isWide: true,
+              ),
+
+              const SizedBox(height: 24),
+
+              // ═══ Weekly Tasks Chart ═══
+              _SectionTitle(
+                  title: 'Tasks This Week', icon: Icons.bar_chart_rounded),
+              const SizedBox(height: 12),
+              SizedBox(
+                height: 200,
+                child: data.weeklyStats.isEmpty
+                    ? _EmptyChartState(message: 'No task data this week')
+                    : _TasksBarChart(stats: data.weeklyStats, isDark: isDark),
+              ),
+
+              const SizedBox(height: 24),
+
+              // ═══ Habit Stats ═══
+              _SectionTitle(
+                  title: 'Habit Stats', icon: Icons.repeat_rounded),
+              const SizedBox(height: 12),
+              _HabitStatsCard(
+                activeHabits: data.totalActiveHabits,
+                completedToday: data.habitsCompletedToday,
+                completionRate: data.habitCompletionRate,
+                currentStreak: data.currentBestStreak,
+                longestStreak: data.longestStreak,
+              ),
+
+              const SizedBox(height: 24),
+
+              // ═══ Focus Stats ═══
+              _SectionTitle(
+                  title: 'Focus Stats', icon: Icons.timer_rounded),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  Expanded(
+                    child: _MiniStatCard(
+                      label: 'Sessions Today',
+                      value: '${data.todayPomodoroSessions}',
+                      icon: Icons.local_fire_department_rounded,
+                      color: AppColors.error,
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: _MiniStatCard(
+                      label: 'Today Focus',
+                      value: data.todayFocusFormatted,
+                      icon: Icons.access_time_rounded,
+                      color: AppColors.primary,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 10),
+              Row(
+                children: [
+                  Expanded(
+                    child: _MiniStatCard(
+                      label: 'Total Sessions',
+                      value: '${data.totalPomodoroSessions}',
+                      icon: Icons.emoji_events_rounded,
+                      color: AppColors.warning,
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: _MiniStatCard(
+                      label: 'Total Focus',
+                      value: data.totalFocusFormatted,
+                      icon: Icons.hourglass_bottom_rounded,
+                      color: AppColors.success,
+                    ),
+                  ),
+                ],
+              ),
+
+              const SizedBox(height: 24),
+
+              // ═══ Focus Sessions Chart ═══
+              _SectionTitle(
+                  title: 'Focus This Week', icon: Icons.insights_rounded),
+              const SizedBox(height: 12),
+              SizedBox(
+                height: 200,
+                child: data.weeklyStats.isEmpty
+                    ? _EmptyChartState(message: 'No focus data this week')
+                    : _PomodoroBarChart(
+                        stats: data.weeklyStats, isDark: isDark),
+              ),
+
+              const SizedBox(height: 24),
+
+              // ═══ AI Insight ═══
+              _SectionTitle(
+                  title: 'AI Insight', icon: Icons.auto_awesome_rounded),
               const SizedBox(height: 8),
               insightAsync.when(
                 data: (insight) => Card(
@@ -108,8 +209,8 @@ class AnalyticsScreen extends ConsumerWidget {
                         Container(
                           padding: const EdgeInsets.all(8),
                           decoration: BoxDecoration(
-                            color: AppColors.primary
-                                .withValues(alpha: 0.1),
+                            color:
+                                AppColors.primary.withValues(alpha: 0.1),
                             borderRadius: BorderRadius.circular(10),
                           ),
                           child: const Icon(
@@ -151,82 +252,7 @@ class AnalyticsScreen extends ConsumerWidget {
                     ),
                   ),
                 ),
-                error: (_, __) => const SizedBox(),
-              ),
-
-              const SizedBox(height: 24),
-
-              // Tasks Completed Chart
-              _SectionTitle(
-                  title: 'Tasks Completed', icon: Icons.task_alt_rounded),
-              const SizedBox(height: 12),
-              SizedBox(
-                height: 200,
-                child: _TasksBarChart(stats: stats, isDark: isDark),
-              ),
-
-              const SizedBox(height: 24),
-
-              // Pomodoro Sessions Chart
-              _SectionTitle(
-                  title: 'Focus Sessions', icon: Icons.timer_rounded),
-              const SizedBox(height: 12),
-              SizedBox(
-                height: 200,
-                child: _PomodoroBarChart(stats: stats, isDark: isDark),
-              ),
-
-              const SizedBox(height: 24),
-
-              // Summary Cards
-              _SectionTitle(title: 'This Week', icon: Icons.date_range_rounded),
-              const SizedBox(height: 12),
-              Row(
-                children: [
-                  Expanded(
-                    child: _MiniStatCard(
-                      label: 'Tasks Done',
-                      value:
-                          '${stats.fold<int>(0, (s, e) => s + e.tasksCompleted)}',
-                      icon: Icons.check_circle_rounded,
-                      color: AppColors.success,
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: _MiniStatCard(
-                      label: 'Focus Min',
-                      value:
-                          '${stats.fold<int>(0, (s, e) => s + e.pomodoroMinutes)}',
-                      icon: Icons.timer_rounded,
-                      color: AppColors.primary,
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 12),
-              Row(
-                children: [
-                  Expanded(
-                    child: _MiniStatCard(
-                      label: 'Habits',
-                      value:
-                          '${stats.fold<int>(0, (s, e) => s + e.habitsCompleted)}',
-                      icon: Icons.repeat_rounded,
-                      color: AppColors.warning,
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: _MiniStatCard(
-                      label: 'Sessions',
-                      value:
-                          '${stats.fold<int>(0, (s, e) => s + e.pomodoroSessions)}',
-                      icon: Icons.local_fire_department_rounded,
-                      color: AppColors.error,
-                    ),
-                  ),
-                ],
+                error: (error, stack) => const SizedBox(),
               ),
 
               const SizedBox(height: 24),
@@ -238,19 +264,299 @@ class AnalyticsScreen extends ConsumerWidget {
       ),
     );
   }
+}
 
-  Color _scoreColor(int score) {
+// ═══════════════════════════════════════════
+//  Reusable Widgets
+// ═══════════════════════════════════════════
+
+class _ScoreCard extends StatelessWidget {
+  final String label;
+  final int score;
+
+  const _ScoreCard({required this.label, required this.score});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [
+            _scoreColor(score),
+            _scoreColor(score).withValues(alpha: 0.7),
+          ],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(18),
+        boxShadow: [
+          BoxShadow(
+            color: _scoreColor(score).withValues(alpha: 0.25),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        children: [
+          Text(
+            label,
+            style: TextStyle(
+              color: Colors.white.withValues(alpha: 0.9),
+              fontSize: 12,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            '$score',
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 40,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+          Text(
+            _scoreLabel(score),
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  static Color _scoreColor(int score) {
     if (score >= 80) return AppColors.success;
     if (score >= 50) return AppColors.primary;
     if (score >= 25) return AppColors.warning;
     return AppColors.error;
   }
 
-  String _scoreLabel(int score) {
+  static String _scoreLabel(int score) {
     if (score >= 80) return 'Excellent! 🔥';
     if (score >= 50) return 'Good Progress 💪';
     if (score >= 25) return 'Building Up 🌱';
     return 'Getting Started 🚀';
+  }
+}
+
+class _HabitStatsCard extends StatelessWidget {
+  final int activeHabits;
+  final int completedToday;
+  final double completionRate;
+  final int currentStreak;
+  final int longestStreak;
+
+  const _HabitStatsCard({
+    required this.activeHabits,
+    required this.completedToday,
+    required this.completionRate,
+    required this.currentStreak,
+    required this.longestStreak,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    if (activeHabits == 0) {
+      return Card(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Center(
+            child: Column(
+              children: [
+                Icon(Icons.repeat_rounded,
+                    size: 36, color: AppColors.textTertiary),
+                const SizedBox(height: 8),
+                Text(
+                  'No active habits yet',
+                  style: TextStyle(
+                    color: AppColors.textSecondary,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  'Create habits to see your stats here',
+                  style: TextStyle(
+                    color: AppColors.textTertiary,
+                    fontSize: 12,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
+
+    final pctText = '${(completionRate * 100).round()}%';
+
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(18),
+        child: Column(
+          children: [
+            // Completion progress
+            Row(
+              children: [
+                SizedBox(
+                  width: 56,
+                  height: 56,
+                  child: Stack(
+                    children: [
+                      SizedBox(
+                        width: 56,
+                        height: 56,
+                        child: CircularProgressIndicator(
+                          value: completionRate,
+                          strokeWidth: 6,
+                          backgroundColor:
+                              AppColors.success.withValues(alpha: 0.15),
+                          valueColor: const AlwaysStoppedAnimation(
+                              AppColors.success),
+                        ),
+                      ),
+                      Center(
+                        child: Text(
+                          pctText,
+                          style: const TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w800,
+                            color: AppColors.success,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        '$completedToday of $activeHabits done today',
+                        style: const TextStyle(
+                          fontWeight: FontWeight.w700,
+                          fontSize: 15,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        'Daily completion rate',
+                        style: TextStyle(
+                          color: AppColors.textSecondary,
+                          fontSize: 12,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            const Divider(height: 1),
+            const SizedBox(height: 16),
+
+            // Streaks
+            Row(
+              children: [
+                Expanded(
+                  child: Row(
+                    children: [
+                      const Icon(Icons.local_fire_department_rounded,
+                          color: AppColors.warning, size: 20),
+                      const SizedBox(width: 8),
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            '$currentStreak days',
+                            style: const TextStyle(
+                              fontWeight: FontWeight.w700,
+                              fontSize: 15,
+                            ),
+                          ),
+                          Text(
+                            'Current Best',
+                            style: TextStyle(
+                              color: AppColors.textSecondary,
+                              fontSize: 11,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+                Expanded(
+                  child: Row(
+                    children: [
+                      const Icon(Icons.emoji_events_rounded,
+                          color: AppColors.primary, size: 20),
+                      const SizedBox(width: 8),
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            '$longestStreak days',
+                            style: const TextStyle(
+                              fontWeight: FontWeight.w700,
+                              fontSize: 15,
+                            ),
+                          ),
+                          Text(
+                            'Longest Streak',
+                            style: TextStyle(
+                              color: AppColors.textSecondary,
+                              fontSize: 11,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _EmptyChartState extends StatelessWidget {
+  final String message;
+
+  const _EmptyChartState({required this.message});
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      child: Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.bar_chart_rounded,
+                size: 36, color: AppColors.textTertiary),
+            const SizedBox(height: 8),
+            Text(
+              message,
+              style: TextStyle(
+                color: AppColors.textSecondary,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }
 
@@ -285,10 +591,6 @@ class _TasksBarChart extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    if (stats.isEmpty) {
-      return const Center(child: Text('No data yet'));
-    }
-
     return Card(
       child: Padding(
         padding: const EdgeInsets.fromLTRB(16, 24, 16, 12),
@@ -366,10 +668,6 @@ class _PomodoroBarChart extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    if (stats.isEmpty) {
-      return const Center(child: Text('No data yet'));
-    }
-
     return Card(
       child: Padding(
         padding: const EdgeInsets.fromLTRB(16, 24, 16, 12),
@@ -445,47 +743,78 @@ class _MiniStatCard extends StatelessWidget {
   final String value;
   final IconData icon;
   final Color color;
+  final bool isWide;
 
   const _MiniStatCard({
     required this.label,
     required this.value,
     required this.icon,
     required this.color,
+    this.isWide = false,
   });
 
   @override
   Widget build(BuildContext context) {
     return Card(
       child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          children: [
-            Container(
-              width: 40,
-              height: 40,
-              decoration: BoxDecoration(
-                color: color.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Icon(icon, color: color, size: 22),
-            ),
-            const SizedBox(height: 10),
-            Text(
-              value,
-              style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                    fontWeight: FontWeight.w800,
+        padding: EdgeInsets.all(isWide ? 14 : 16),
+        child: isWide
+            ? Row(
+                children: [
+                  Container(
+                    width: 40,
+                    height: 40,
+                    decoration: BoxDecoration(
+                      color: color.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Icon(icon, color: color, size: 22),
                   ),
-            ),
-            const SizedBox(height: 2),
-            Text(
-              label,
-              style: TextStyle(
-                color: AppColors.textSecondary,
-                fontSize: 12,
+                  const SizedBox(width: 14),
+                  Text(
+                    value,
+                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                          fontWeight: FontWeight.w800,
+                        ),
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    label,
+                    style: TextStyle(
+                      color: AppColors.textSecondary,
+                      fontSize: 13,
+                    ),
+                  ),
+                ],
+              )
+            : Column(
+                children: [
+                  Container(
+                    width: 40,
+                    height: 40,
+                    decoration: BoxDecoration(
+                      color: color.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Icon(icon, color: color, size: 22),
+                  ),
+                  const SizedBox(height: 10),
+                  Text(
+                    value,
+                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                          fontWeight: FontWeight.w800,
+                        ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    label,
+                    style: TextStyle(
+                      color: AppColors.textSecondary,
+                      fontSize: 12,
+                    ),
+                  ),
+                ],
               ),
-            ),
-          ],
-        ),
       ),
     );
   }
