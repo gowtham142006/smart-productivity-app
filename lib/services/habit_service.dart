@@ -31,9 +31,10 @@ class HabitService {
     try {
       final today = DateTime.now().toIso8601String().split('T').first;
       final results = await _client
-          .from('habit_completions')
+          .from('habit_logs')
           .select('habit_id')
-          .eq('completed_date', today);
+.eq('completed_at', today)
+.eq('status', 'completed');
 
       return results.map<String>((r) => r['habit_id'] as String).toSet();
     } catch (e) {
@@ -120,20 +121,21 @@ class HabitService {
     DateTime? to,
   }) async {
     var query = _client
-        .from('habit_completions')
-        .select()
-        .eq('habit_id', habitId);
+    .from('habit_logs')
+    .select()
+    .eq('habit_id', habitId)
+    .eq('status', 'completed');
 
     if (from != null) {
       query = query.gte(
-          'completed_date', from.toIso8601String().split('T').first);
+          'completed_at', from.toIso8601String().split('T').first);
     }
     if (to != null) {
       query = query.lte(
-          'completed_date', to.toIso8601String().split('T').first);
+          'completed_at', to.toIso8601String().split('T').first);
     }
 
-    return await query.order('completed_date', ascending: false);
+    return await query.order('completed_at', ascending: false);
   }
 
   /// Mark a habit as completed for today.
@@ -144,18 +146,21 @@ class HabitService {
 
     // Check if already completed today
     final existing = await _client
-        .from('habit_completions')
+        .from('habit_logs')
         .select()
         .eq('habit_id', habitId)
-        .eq('completed_date', today)
+        .eq('completed_at', today)
+.eq('status', 'completed')
         .maybeSingle();
 
     if (existing != null) return; // Already completed
 
-    await _client.from('habit_completions').insert({
-      'habit_id': habitId,
-      'completed_date': today,
-    });
+    await _client.from('habit_logs').insert({
+  'user_id': _userId,
+  'habit_id': habitId,
+  'completed_at': today,
+  'status': 'completed',
+});
 
     // Update streak
     await _updateStreak(habitId);
@@ -166,10 +171,11 @@ class HabitService {
     final today = DateTime.now().toIso8601String().split('T').first;
 
     await _client
-        .from('habit_completions')
-        .delete()
-        .eq('habit_id', habitId)
-        .eq('completed_date', today);
+    .from('habit_logs')
+    .delete()
+    .eq('habit_id', habitId)
+    .eq('completed_at', today)
+    .eq('status', 'completed');
   }
 
   /// Check if a habit is completed today.
@@ -177,10 +183,11 @@ class HabitService {
     final today = DateTime.now().toIso8601String().split('T').first;
 
     final result = await _client
-        .from('habit_completions')
+        .from('habit_logs')
         .select()
         .eq('habit_id', habitId)
-        .eq('completed_date', today)
+        .eq('completed_at', today)
+.eq('status', 'completed')
         .maybeSingle();
 
     return result != null;
@@ -190,11 +197,12 @@ class HabitService {
   Future<void> _updateStreak(String habitId) async {
     // Get recent completions to calculate streak
     final completions = await _client
-        .from('habit_completions')
-        .select('completed_date')
-        .eq('habit_id', habitId)
-        .order('completed_date', ascending: false)
-        .limit(365);
+    .from('habit_logs')
+    .select('completed_at')
+    .eq('habit_id', habitId)
+    .eq('status', 'completed')
+    .order('completed_at', ascending: false)
+    .limit(365);
 
     if (completions.isEmpty) return;
 
@@ -203,7 +211,9 @@ class HabitService {
 
     for (int i = 0; i < 365; i++) {
       final dateStr = checkDate.toIso8601String().split('T').first;
-      final found = completions.any((c) => c['completed_date'] == dateStr);
+      final found = completions.any(
+  (c) => (c['completed_at'] as String?) == dateStr,
+);
 
       if (found) {
         streak++;
