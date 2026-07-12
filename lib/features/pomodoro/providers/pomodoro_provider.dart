@@ -67,11 +67,13 @@ class PomodoroSettingsNotifier extends Notifier<PomodoroSettings> {
     int? focusMinutes,
     int? shortBreakMinutes,
     int? longBreakMinutes,
+    int? sessionsBeforeLongBreak,
   }) async {
     final updated = state.copyWith(
       focusMinutes: focusMinutes,
       shortBreakMinutes: shortBreakMinutes,
       longBreakMinutes: longBreakMinutes,
+      sessionsBeforeLongBreak: sessionsBeforeLongBreak,
     );
 
     try {
@@ -79,16 +81,12 @@ class PomodoroSettingsNotifier extends Notifier<PomodoroSettings> {
       await box.put('pomodoro_focus', updated.focusMinutes);
       await box.put('pomodoro_short_break', updated.shortBreakMinutes);
       await box.put('pomodoro_long_break', updated.longBreakMinutes);
+      await box.put('pomodoro_sessions_before_long', updated.sessionsBeforeLongBreak);
     } catch (e) {
       debugPrint('[PomodoroSettings] Error saving to Hive: $e');
     }
 
     state = updated;
-  }
-
-  /// Quick preset: set focus duration only.
-  Future<void> setFocusPreset(int minutes) async {
-    await updateSettings(focusMinutes: minutes);
   }
 }
 
@@ -145,12 +143,96 @@ class PomodoroNotifier extends Notifier<PomodoroState> {
   PomodoroState build() {
     ref.onDispose(() => _timer?.cancel());
 
-    // Read settings for initial state
-    final settings = ref.watch(pomodoroSettingsProvider);
+    // Listen to settings changes to update the timer state immediately.
+    ref.listen<PomodoroSettings>(pomodoroSettingsProvider, (previous, next) {
+      if (previous != null) {
+        _onSettingsChanged(previous, next);
+      }
+    });
+
+    // Read initial settings for initial state
+    final settings = ref.read(pomodoroSettingsProvider);
+
+    // Load today's completed sessions count from the daily stats database.
+    Future.microtask(() => loadTodaySessions());
+
     return PomodoroState(
       remainingSeconds: settings.focusMinutes * 60,
       totalSeconds: settings.focusMinutes * 60,
     );
+  }
+
+  /// Load today's completed sessions count asynchronously.
+  Future<void> loadTodaySessions() async {
+    try {
+      final statsService = ref.read(dailyStatsServiceProvider);
+      final stats = await statsService.getTodayStats();
+      final sessions = (stats['pomodoro_sessions'] as num?)?.toInt() ?? 0;
+      state = state.copyWith(sessionsCompleted: sessions);
+    } catch (e) {
+      debugPrint('[Pomodoro] Error loading today sessions: $e');
+    }
+  }
+
+  void _onSettingsChanged(PomodoroSettings oldSettings, PomodoroSettings newSettings) {
+    if (!state.isBreak) {
+      // Focus mode
+      if (oldSettings.focusMinutes != newSettings.focusMinutes) {
+        final newTotal = newSettings.focusMinutes * 60;
+        if (state.status == PomodoroStatus.idle) {
+          state = state.copyWith(
+            remainingSeconds: newTotal,
+            totalSeconds: newTotal,
+          );
+        } else {
+          final elapsed = state.totalSeconds - state.remainingSeconds;
+          if (elapsed >= newTotal) {
+            state = state.copyWith(
+              remainingSeconds: 0,
+              totalSeconds: newTotal,
+            );
+            if (state.status == PomodoroStatus.running) {
+              _timer?.cancel();
+              _onTimerComplete();
+            }
+          } else {
+            state = state.copyWith(
+              remainingSeconds: newTotal - elapsed,
+              totalSeconds: newTotal,
+            );
+          }
+        }
+      }
+    } else {
+      // Break mode
+      final wasLongBreak = state.sessionsCompleted > 0 &&
+          (state.sessionsCompleted % oldSettings.sessionsBeforeLongBreak == 0);
+      final isLongBreakNow = state.sessionsCompleted > 0 &&
+          (state.sessionsCompleted % newSettings.sessionsBeforeLongBreak == 0);
+
+      final oldBreakMin = wasLongBreak ? oldSettings.longBreakMinutes : oldSettings.shortBreakMinutes;
+      final newBreakMin = isLongBreakNow ? newSettings.longBreakMinutes : newSettings.shortBreakMinutes;
+
+      if (oldBreakMin != newBreakMin || oldSettings.sessionsBeforeLongBreak != newSettings.sessionsBeforeLongBreak) {
+        final newTotal = newBreakMin * 60;
+        final elapsed = state.totalSeconds - state.remainingSeconds;
+        if (elapsed >= newTotal) {
+          state = state.copyWith(
+            remainingSeconds: 0,
+            totalSeconds: newTotal,
+          );
+          if (state.status == PomodoroStatus.running) {
+            _timer?.cancel();
+            _onTimerComplete();
+          }
+        } else {
+          state = state.copyWith(
+            remainingSeconds: newTotal - elapsed,
+            totalSeconds: newTotal,
+          );
+        }
+      }
+    }
   }
 
   void start() {
@@ -184,10 +266,17 @@ class PomodoroNotifier extends Notifier<PomodoroState> {
   void reset() {
     _timer?.cancel();
     final settings = ref.read(pomodoroSettingsProvider);
-    state = PomodoroState(
-      sessionsCompleted: state.sessionsCompleted,
-      remainingSeconds: settings.focusMinutes * 60,
-      totalSeconds: settings.focusMinutes * 60,
+    final duration = state.isBreak
+        ? ((state.sessionsCompleted > 0 &&
+                state.sessionsCompleted % settings.sessionsBeforeLongBreak == 0)
+            ? settings.longBreakMinutes
+            : settings.shortBreakMinutes)
+        : settings.focusMinutes;
+
+    state = state.copyWith(
+      status: PomodoroStatus.idle,
+      remainingSeconds: duration * 60,
+      totalSeconds: duration * 60,
     );
   }
 
@@ -197,6 +286,8 @@ class PomodoroNotifier extends Notifier<PomodoroState> {
     state = PomodoroState(
       remainingSeconds: settings.focusMinutes * 60,
       totalSeconds: settings.focusMinutes * 60,
+      sessionsCompleted: state.sessionsCompleted,
+      isBreak: false,
     );
   }
 
@@ -275,13 +366,15 @@ class PomodoroNotifier extends Notifier<PomodoroState> {
         debugPrint('[Pomodoro] Error showing notification: $e');
       }
 
-      // Reset to work mode
+      // Reset to work mode and automatically start the new focus session
       state = PomodoroState(
-        status: PomodoroStatus.idle,
+        status: PomodoroStatus.running,
         sessionsCompleted: state.sessionsCompleted,
         remainingSeconds: settings.focusMinutes * 60,
         totalSeconds: settings.focusMinutes * 60,
+        isBreak: false,
       );
+      _startTimer();
     }
   }
 }

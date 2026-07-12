@@ -2,13 +2,36 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/providers/core_providers.dart';
 import '../../providers/pomodoro_provider.dart';
 
-class PomodoroScreen extends ConsumerWidget {
+class PomodoroScreen extends ConsumerStatefulWidget {
   const PomodoroScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<PomodoroScreen> createState() => _PomodoroScreenState();
+}
+
+class _PomodoroScreenState extends ConsumerState<PomodoroScreen> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _requestNotificationPermission();
+    });
+  }
+
+  Future<void> _requestNotificationPermission() async {
+    try {
+      final notifService = ref.read(notificationServiceProvider);
+      await notifService.requestPermissions();
+    } catch (e) {
+      debugPrint('[PomodoroScreen] Error requesting notification permissions: $e');
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final pomodoro = ref.watch(pomodoroProvider);
     final settings = ref.watch(pomodoroSettingsProvider);
     final isDark = Theme.of(context).brightness == Brightness.dark;
@@ -23,7 +46,7 @@ class PomodoroScreen extends ConsumerWidget {
         actions: [
           IconButton(
             icon: const Icon(Icons.settings_rounded),
-            onPressed: () => _showSettingsSheet(context, ref),
+            onPressed: () => _showSettingsSheet(context),
             tooltip: 'Timer Settings',
           ),
         ],
@@ -140,7 +163,7 @@ class PomodoroScreen extends ConsumerWidget {
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  // Reset button
+                  // Stop button
                   if (pomodoro.status != PomodoroStatus.idle)
                     _ControlButton(
                       icon: Icons.stop_rounded,
@@ -158,7 +181,7 @@ class PomodoroScreen extends ConsumerWidget {
                   _ControlButton(
                     icon: _getMainIcon(pomodoro.status),
                     label: _getMainLabel(pomodoro.status),
-                    onTap: () => _handleMainAction(ref, pomodoro.status),
+                    onTap: () => _handleMainAction(pomodoro.status),
                     color: pomodoro.isBreak
                         ? AppColors.success
                         : AppColors.primary,
@@ -213,7 +236,7 @@ class PomodoroScreen extends ConsumerWidget {
                     ),
                     const SizedBox(height: 6),
                     Text(
-                      '${settings.focusMinutes}m focus · ${settings.shortBreakMinutes}m short · ${settings.longBreakMinutes}m long',
+                      '${settings.focusMinutes}m focus · ${settings.shortBreakMinutes}m short · ${settings.longBreakMinutes}m long · every ${settings.sessionsBeforeLongBreak} sessions',
                       style: TextStyle(
                         fontSize: 12,
                         color: AppColors.textSecondary,
@@ -231,9 +254,7 @@ class PomodoroScreen extends ConsumerWidget {
     );
   }
 
-  void _showSettingsSheet(BuildContext context, WidgetRef ref) {
-    final presets = [15, 25, 30, 45, 60];
-
+  void _showSettingsSheet(BuildContext context) {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -273,49 +294,28 @@ class PomodoroScreen extends ConsumerWidget {
                   ),
                   const SizedBox(height: 20),
 
-                  // Quick presets
-                  Text(
-                    'Focus Duration Presets',
-                    style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                          fontWeight: FontWeight.w600,
-                        ),
-                  ),
-                  const SizedBox(height: 10),
-                  Wrap(
-                    spacing: 10,
-                    children: presets.map((minutes) {
-                      final isSelected = settings.focusMinutes == minutes;
-                      return ChoiceChip(
-                        label: Text('$minutes min'),
-                        selected: isSelected,
-                        onSelected: (_) {
-                          ref
-                              .read(pomodoroSettingsProvider.notifier)
-                              .setFocusPreset(minutes);
-                          // Reset timer if idle
-                          final status = ref.read(pomodoroProvider).status;
-                          if (status == PomodoroStatus.idle) {
-                            ref.read(pomodoroProvider.notifier).stop();
-                          }
-                        },
-                        selectedColor: AppColors.primary.withValues(alpha: 0.2),
-                        labelStyle: TextStyle(
-                          color: isSelected ? AppColors.primary : null,
-                          fontWeight:
-                              isSelected ? FontWeight.w700 : FontWeight.w500,
-                        ),
-                      );
-                    }).toList(),
+                  // Focus Duration Slider
+                  _SettingsSlider(
+                    label: 'Focus Duration',
+                    value: settings.focusMinutes,
+                    min: 1,
+                    max: 120,
+                    suffix: 'min',
+                    onChanged: (v) {
+                      ref
+                          .read(pomodoroSettingsProvider.notifier)
+                          .updateSettings(focusMinutes: v);
+                    },
                   ),
 
-                  const SizedBox(height: 24),
+                  const SizedBox(height: 16),
 
-                  // Short break
+                  // Short break Slider
                   _SettingsSlider(
                     label: 'Short Break',
                     value: settings.shortBreakMinutes,
                     min: 1,
-                    max: 15,
+                    max: 30,
                     suffix: 'min',
                     onChanged: (v) {
                       ref
@@ -326,17 +326,33 @@ class PomodoroScreen extends ConsumerWidget {
 
                   const SizedBox(height: 16),
 
-                  // Long break
+                  // Long break Slider
                   _SettingsSlider(
                     label: 'Long Break',
                     value: settings.longBreakMinutes,
-                    min: 5,
-                    max: 30,
+                    min: 1,
+                    max: 60,
                     suffix: 'min',
                     onChanged: (v) {
                       ref
                           .read(pomodoroSettingsProvider.notifier)
                           .updateSettings(longBreakMinutes: v);
+                    },
+                  ),
+
+                  const SizedBox(height: 16),
+
+                  // Long break Interval Slider
+                  _SettingsSlider(
+                    label: 'Long Break Interval',
+                    value: settings.sessionsBeforeLongBreak,
+                    min: 1,
+                    max: 12,
+                    suffix: 'sessions',
+                    onChanged: (v) {
+                      ref
+                          .read(pomodoroSettingsProvider.notifier)
+                          .updateSettings(sessionsBeforeLongBreak: v);
                     },
                   ),
 
@@ -387,7 +403,7 @@ class PomodoroScreen extends ConsumerWidget {
     }
   }
 
-  void _handleMainAction(WidgetRef ref, PomodoroStatus status) {
+  void _handleMainAction(PomodoroStatus status) {
     final notifier = ref.read(pomodoroProvider.notifier);
     switch (status) {
       case PomodoroStatus.idle:
