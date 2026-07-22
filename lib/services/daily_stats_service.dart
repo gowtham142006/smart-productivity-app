@@ -1,12 +1,20 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+/// Read-only service for the `daily_stats` VIEW.
+///
+/// `daily_stats` is a PostgreSQL VIEW that auto-computes its values from:
+///   - tasks           → tasks_completed, tasks_created
+///   - habit_logs      → habits_completed
+///   - pomodoro_sessions → focus_minutes, pomodoro_sessions
+///
+/// It must NEVER be inserted into or updated.
 class DailyStatsService {
   final SupabaseClient _client;
   DailyStatsService(this._client);
 
   String? get _userId => _client.auth.currentUser?.id;
 
-  /// Get daily stats for a date range.
+  /// Get daily stats for a date range (read-only).
   Future<List<Map<String, dynamic>>> getStats({
     required DateTime from,
     required DateTime to,
@@ -22,7 +30,11 @@ class DailyStatsService {
         .order('date', ascending: true);
   }
 
-  /// Get stats for today, creating a row if needed.
+  /// Get stats for today (read-only).
+  ///
+  /// Returns an empty map if no data exists for today yet.
+  /// The VIEW will produce a row automatically once the user has
+  /// at least one task, habit log, or pomodoro session for the day.
   Future<Map<String, dynamic>> getTodayStats() async {
     if (_userId == null) return {};
 
@@ -35,61 +47,10 @@ class DailyStatsService {
         .eq('date', today)
         .maybeSingle();
 
-    if (result != null) return result;
-
-    // Create today's entry
-    final newRow = {
-      'user_id': _userId,
-      'date': today,
-      'tasks_completed': 0,
-      'tasks_created': 0,
-      'pomodoro_sessions': 0,
-      'pomodoro_minutes': 0,
-      'habits_completed': 0,
-      'focus_score': 0,
-    };
-
-    final inserted = await _client
-        .from('daily_stats')
-        .insert(newRow)
-        .select()
-        .single();
-
-    return inserted;
+    return result ?? {};
   }
 
-  /// Increment a stat for today.
-  Future<void> incrementStat(String field, {int amount = 1}) async {
-    if (_userId == null) return;
-
-    final today = DateTime.now().toIso8601String().split('T').first;
-
-    // Ensure today's row exists
-    final stats = await getTodayStats();
-    final currentVal = (stats[field] as num?)?.toInt() ?? 0;
-
-    await _client
-        .from('daily_stats')
-        .update({field: currentVal + amount})
-        .eq('user_id', _userId!)
-        .eq('date', today);
-  }
-
-  /// Update a specific field for today.
-  Future<void> updateTodayStat(String field, dynamic value) async {
-    if (_userId == null) return;
-
-    final today = DateTime.now().toIso8601String().split('T').first;
-    await getTodayStats(); // Ensure row exists
-
-    await _client
-        .from('daily_stats')
-        .update({field: value})
-        .eq('user_id', _userId!)
-        .eq('date', today);
-  }
-
-  /// Get the last N days of stats.
+  /// Get the last N days of stats (read-only).
   Future<List<Map<String, dynamic>>> getLastNDays(int n) async {
     final to = DateTime.now();
     final from = to.subtract(Duration(days: n - 1));

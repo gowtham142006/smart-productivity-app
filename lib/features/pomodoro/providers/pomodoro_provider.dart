@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import '../../../core/providers/core_providers.dart';
 import '../../../services/notification_service.dart';
+import '../../../features/analytics/providers/analytics_provider.dart';
 
 /// Pomodoro timer states.
 enum PomodoroStatus { idle, running, paused, breakTime }
@@ -139,6 +140,9 @@ class PomodoroState {
 class PomodoroNotifier extends Notifier<PomodoroState> {
   Timer? _timer;
 
+  /// Tracks when the current focus session started.
+  DateTime? _sessionStartedAt;
+
   @override
   PomodoroState build() {
     ref.onDispose(() => _timer?.cancel());
@@ -153,7 +157,7 @@ class PomodoroNotifier extends Notifier<PomodoroState> {
     // Read initial settings for initial state
     final settings = ref.read(pomodoroSettingsProvider);
 
-    // Load today's completed sessions count from the daily stats database.
+    // Load today's completed sessions count from the pomodoro_sessions table.
     Future.microtask(() => loadTodaySessions());
 
     return PomodoroState(
@@ -165,9 +169,8 @@ class PomodoroNotifier extends Notifier<PomodoroState> {
   /// Load today's completed sessions count asynchronously.
   Future<void> loadTodaySessions() async {
     try {
-      final statsService = ref.read(dailyStatsServiceProvider);
-      final stats = await statsService.getTodayStats();
-      final sessions = (stats['pomodoro_sessions'] as num?)?.toInt() ?? 0;
+      final pomodoroService = ref.read(pomodoroServiceProvider);
+      final sessions = await pomodoroService.getTodaySessionCount();
       state = state.copyWith(sessionsCompleted: sessions);
     } catch (e) {
       debugPrint('[Pomodoro] Error loading today sessions: $e');
@@ -242,6 +245,10 @@ class PomodoroNotifier extends Notifier<PomodoroState> {
     if (state.status == PomodoroStatus.idle) {
       final settings = ref.read(pomodoroSettingsProvider);
       final seconds = settings.focusMinutes * 60;
+
+      // Record session start time
+      _sessionStartedAt = DateTime.now();
+
       state = state.copyWith(
         status: PomodoroStatus.running,
         remainingSeconds: seconds,
@@ -282,6 +289,7 @@ class PomodoroNotifier extends Notifier<PomodoroState> {
 
   void stop() {
     _timer?.cancel();
+    _sessionStartedAt = null;
     final settings = ref.read(pomodoroSettingsProvider);
     state = PomodoroState(
       remainingSeconds: settings.focusMinutes * 60,
@@ -305,24 +313,40 @@ class PomodoroNotifier extends Notifier<PomodoroState> {
     });
   }
 
-  /// Called when timer finishes — auto-save sessions (Decision #9).
+  /// Called when timer finishes — persist session to `pomodoro_sessions` table.
   Future<void> _onTimerComplete() async {
     final settings = ref.read(pomodoroSettingsProvider);
 
     if (!state.isBreak) {
-      // Work session completed
+      // ── Work session completed ──
       final newSessions = state.sessionsCompleted + 1;
+      final endedAt = DateTime.now();
+      final startedAt = _sessionStartedAt ?? endedAt.subtract(
+        Duration(minutes: settings.focusMinutes),
+      );
 
-      // Auto-save to daily stats (Decision #9)
+      // Persist to pomodoro_sessions table (the actual fix)
       try {
-        final statsService = ref.read(dailyStatsServiceProvider);
-        await statsService.incrementStat('pomodoro_sessions');
-        await statsService.incrementStat('pomodoro_minutes',
-            amount: settings.focusMinutes);
+        final pomodoroService = ref.read(pomodoroServiceProvider);
+        await pomodoroService.saveCompletedSession(
+          durationMinutes: settings.focusMinutes,
+          startedAt: startedAt,
+          endedAt: endedAt,
+        );
         debugPrint(
-            '[Pomodoro] Session $newSessions saved (${settings.focusMinutes} min)');
+            '[Pomodoro] ✅ Session $newSessions saved to pomodoro_sessions '
+            '(${settings.focusMinutes} min)');
       } catch (e) {
-        debugPrint('[Pomodoro] Error saving to daily_stats: $e');
+        debugPrint('[Pomodoro] ❌ Error saving to pomodoro_sessions: $e');
+      }
+
+      // Refresh analytics so the dashboard updates immediately
+      try {
+        ref.invalidate(analyticsProvider);
+        ref.invalidate(fullAnalyticsProvider);
+        ref.invalidate(todayStatsProvider);
+      } catch (e) {
+        debugPrint('[Pomodoro] Error refreshing analytics: $e');
       }
 
       // Show completion notification
@@ -343,6 +367,8 @@ class PomodoroNotifier extends Notifier<PomodoroState> {
       final breakMinutes =
           isLongBreak ? settings.longBreakMinutes : settings.shortBreakMinutes;
 
+      _sessionStartedAt = null; // Clear for next session
+
       state = PomodoroState(
         status: PomodoroStatus.breakTime,
         remainingSeconds: breakMinutes * 60,
@@ -354,7 +380,7 @@ class PomodoroNotifier extends Notifier<PomodoroState> {
       // Auto-start break
       _startTimer();
     } else {
-      // Break completed
+      // ── Break completed ──
       try {
         final notifService = NotificationService();
         await notifService.showNotification(
@@ -365,6 +391,9 @@ class PomodoroNotifier extends Notifier<PomodoroState> {
       } catch (e) {
         debugPrint('[Pomodoro] Error showing notification: $e');
       }
+
+      // Record start time for the new focus session
+      _sessionStartedAt = DateTime.now();
 
       // Reset to work mode and automatically start the new focus session
       state = PomodoroState(
@@ -382,4 +411,3 @@ class PomodoroNotifier extends Notifier<PomodoroState> {
 final pomodoroProvider = NotifierProvider<PomodoroNotifier, PomodoroState>(
   PomodoroNotifier.new,
 );
-

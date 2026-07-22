@@ -153,23 +153,47 @@ CREATE TABLE pomodoro_sessions (
 );
 
 -- =====================================================
--- DAILY STATS
+-- DAILY STATS (VIEW — auto-computed, READ ONLY)
 -- =====================================================
 
-CREATE TABLE daily_stats (
-    user_id UUID REFERENCES auth.users(id)
-        ON DELETE CASCADE,
-
-    date DATE,
-
-    tasks_created BIGINT,
-
-    tasks_completed BIGINT,
-
-    habits_completed BIGINT,
-
-    focus_minutes BIGINT
-);
+CREATE OR REPLACE VIEW daily_stats AS
+SELECT
+    COALESCE(ts.user_id, hs.user_id, ps_agg.user_id) AS user_id,
+    COALESCE(ts.date, hs.date, ps_agg.date) AS date,
+    COALESCE(ts.tasks_completed, 0) AS tasks_completed,
+    COALESCE(ts.tasks_created, 0) AS tasks_created,
+    COALESCE(hs.habits_completed, 0) AS habits_completed,
+    COALESCE(ps_agg.focus_minutes, 0) AS focus_minutes,
+    COALESCE(ps_agg.pomodoro_sessions, 0) AS pomodoro_sessions
+FROM (
+    SELECT
+        user_id,
+        DATE(created_at) AS date,
+        COUNT(*) FILTER (WHERE is_completed = true) AS tasks_completed,
+        COUNT(*) AS tasks_created
+    FROM tasks
+    GROUP BY user_id, DATE(created_at)
+) ts
+FULL OUTER JOIN (
+    SELECT
+        h.user_id,
+        hl.completed_at AS date,
+        COUNT(DISTINCT hl.id) AS habits_completed
+    FROM habit_logs hl
+    JOIN habits h ON h.id = hl.habit_id
+    GROUP BY h.user_id, hl.completed_at
+) hs ON hs.user_id = ts.user_id AND hs.date = ts.date
+FULL OUTER JOIN (
+    SELECT
+        user_id,
+        DATE(ended_at) AS date,
+        COALESCE(SUM(duration) FILTER (WHERE completed = true), 0) AS focus_minutes,
+        COUNT(id) FILTER (WHERE completed = true) AS pomodoro_sessions
+    FROM pomodoro_sessions
+    GROUP BY user_id, DATE(ended_at)
+) ps_agg
+    ON ps_agg.user_id = COALESCE(ts.user_id, hs.user_id)
+   AND ps_agg.date = COALESCE(ts.date, hs.date);
 
 -- =====================================================
 -- NOTIFICATION SETTINGS

@@ -113,9 +113,7 @@ class AllTasksNotifier extends AsyncNotifier<List<TaskModel>> {
       await _scheduleTaskNotification(title.hashCode, title, dueDate);
     }
 
-    // Update daily stats
-    await _incrementDailyStat('tasks_created');
-
+    // Note: daily_stats VIEW auto-computes tasks_created from tasks table.
     ref.invalidateSelf();
   }
 
@@ -133,10 +131,10 @@ class AllTasksNotifier extends AsyncNotifier<List<TaskModel>> {
       final service = ref.read(taskServiceProvider);
       await service.updateTaskStatus(taskId, isCompleted);
 
-      // Cancel notification when completed, update daily stats
+      // Cancel notification when completed
       if (isCompleted) {
         await _cancelTaskNotification(taskId.hashCode);
-        await _incrementDailyStat('tasks_completed');
+        // Note: daily_stats VIEW auto-computes tasks_completed from tasks table.
       }
     } catch (e) {
       // Revert on failure
@@ -259,14 +257,6 @@ class AllTasksNotifier extends AsyncNotifier<List<TaskModel>> {
     }
   }
 
-  Future<void> _incrementDailyStat(String field) async {
-    try {
-      final statsService = ref.read(dailyStatsServiceProvider);
-      await statsService.incrementStat(field);
-    } catch (e) {
-      debugPrint('[TaskProvider] Error updating daily stat: $e');
-    }
-  }
 }
 
 

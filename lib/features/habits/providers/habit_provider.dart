@@ -75,14 +75,7 @@ class HabitListNotifier extends AsyncNotifier<List<HabitModel>> {
         await service.uncompleteHabit(habitId);
       } else {
         await service.completeHabit(habitId);
-
-        // Update daily stats (Decision #9)
-        try {
-          final statsService = ref.read(dailyStatsServiceProvider);
-          await statsService.incrementStat('habits_completed');
-        } catch (e) {
-          debugPrint('[HabitProvider] Error updating daily stats: $e');
-        }
+        // Note: daily_stats VIEW auto-computes habits_completed from habit_logs.
       }
       ref.invalidateSelf();
     } catch (e) {

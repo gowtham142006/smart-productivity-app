@@ -151,7 +151,7 @@ final fullAnalyticsProvider = FutureProvider<FullAnalyticsData>((ref) async {
     final totalPomodoroSessions =
         monthlyData.fold<int>(0, (sum, s) => sum + s.pomodoroSessions);
     final totalFocusMinutes =
-        monthlyData.fold<int>(0, (sum, s) => sum + s.pomodoroMinutes);
+        monthlyData.fold<int>(0, (sum, s) => sum + s.focusMinutes);
 
     // Today's pomodoro
     final todayStats = weeklyData.where((s) {
@@ -162,7 +162,7 @@ final fullAnalyticsProvider = FutureProvider<FullAnalyticsData>((ref) async {
     final todayPomodoroSessions =
         todayStats.isNotEmpty ? todayStats.first.pomodoroSessions : 0;
     final todayFocusMinutes =
-        todayStats.isNotEmpty ? todayStats.first.pomodoroMinutes : 0;
+        todayStats.isNotEmpty ? todayStats.first.focusMinutes : 0;
 
     // Productivity scores
     final weeklyScore = weeklyData.isNotEmpty
