@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../data/habit_model.dart';
 import '../../../core/providers/core_providers.dart';
 import '../../../services/notification_service.dart';
+import '../../analytics/providers/analytics_provider.dart';
 
 class HabitListNotifier extends AsyncNotifier<List<HabitModel>> {
   @override
@@ -66,20 +67,53 @@ class HabitListNotifier extends AsyncNotifier<List<HabitModel>> {
   }
 
   Future<void> toggleCompletion(String habitId) async {
+    final previousList = state.value;
+    if (previousList == null) return;
+
+    final index = previousList.indexWhere((h) => h.id == habitId);
+    if (index == -1) return;
+
+    final oldHabit = previousList[index];
+    final isCompleting = !oldHabit.isCompletedToday;
+
+    final newCurrentStreak = isCompleting
+        ? oldHabit.currentStreak + 1
+        : (oldHabit.currentStreak > 0 ? oldHabit.currentStreak - 1 : 0);
+
+    final newBestStreak = isCompleting
+        ? (newCurrentStreak > oldHabit.bestStreak
+            ? newCurrentStreak
+            : oldHabit.bestStreak)
+        : oldHabit.bestStreak;
+
+    final updatedHabit = oldHabit.copyWith(
+      isCompletedToday: isCompleting,
+      currentStreak: newCurrentStreak,
+      bestStreak: newBestStreak,
+    );
+
+    // 1. Optimistic update: Update local state immediately
+    final newList = List<HabitModel>.from(previousList);
+    newList[index] = updatedHabit;
+    state = AsyncData(newList);
+
+    // 2. Perform DB request in the background
     try {
       final service = ref.read(habitServiceProvider);
-      final habits = state.value ?? [];
-      final habit = habits.firstWhere((h) => h.id == habitId);
-
-      if (habit.isCompletedToday) {
-        await service.uncompleteHabit(habitId);
-      } else {
+      if (isCompleting) {
         await service.completeHabit(habitId);
-        // Note: daily_stats VIEW auto-computes habits_completed from habit_logs.
+      } else {
+        await service.uncompleteHabit(habitId);
       }
-      ref.invalidateSelf();
-    } catch (e) {
-      debugPrint('[HabitProvider] Error toggling completion: $e');
+
+      // Invalidate analytics so stats stay synchronized
+      ref.invalidate(analyticsProvider);
+      ref.invalidate(fullAnalyticsProvider);
+    } catch (e, st) {
+      // 3. Revert state on failure
+      state = AsyncData(previousList);
+      debugPrint('[HabitProvider] ❌ Error toggling habit completion: $e');
+      debugPrint('[HabitProvider] Stack: $st');
       rethrow;
     }
   }

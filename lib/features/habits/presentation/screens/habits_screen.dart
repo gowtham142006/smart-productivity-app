@@ -159,15 +159,39 @@ class HabitsScreen extends ConsumerWidget {
                 // Habit list
                 ...habits.map((habit) => _HabitTile(
                       habit: habit,
-                      onToggle: () {
-                        ref
-                            .read(habitListProvider.notifier)
-                            .toggleCompletion(habit.id);
+                      onToggle: () async {
+                        try {
+                          await ref
+                              .read(habitListProvider.notifier)
+                              .toggleCompletion(habit.id);
+                        } catch (e) {
+                          if (context.mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text('Failed to update habit: $e'),
+                                backgroundColor: AppColors.error,
+                                behavior: SnackBarBehavior.floating,
+                              ),
+                            );
+                          }
+                        }
                       },
-                      onDelete: () {
-                        ref
-                            .read(habitListProvider.notifier)
-                            .deleteHabit(habit.id);
+                      onDelete: () async {
+                        try {
+                          await ref
+                              .read(habitListProvider.notifier)
+                              .deleteHabit(habit.id);
+                        } catch (e) {
+                          if (context.mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text('Failed to delete habit: $e'),
+                                backgroundColor: AppColors.error,
+                                behavior: SnackBarBehavior.floating,
+                              ),
+                            );
+                          }
+                        }
                       },
                     )),
               ],
