@@ -90,17 +90,18 @@ class NotificationService {
     required String body,
     required DateTime scheduledTime,
     String? payload,
+    DateTimeComponents? matchDateTimeComponents,
   }) async {
     if (scheduledTime.isBefore(DateTime.now())) {
       debugPrint(
-          '[NotificationService] Skipping past notification: $scheduledTime');
+          '[NotificationService] ⚠️ Skipping past notification ID $id ($title) scheduled at: $scheduledTime (Current time: ${DateTime.now()})');
       return id;
     }
 
     final androidDetails = AndroidNotificationDetails(
       'task_reminders',
       'Task Reminders',
-      channelDescription: 'Notifications for task deadlines',
+      channelDescription: 'Notifications for task deadlines and habit reminders',
       importance: Importance.high,
       priority: Priority.high,
       showWhen: true,
@@ -119,19 +120,27 @@ class NotificationService {
 
     final tzScheduledTime = tz.TZDateTime.from(scheduledTime, tz.local);
 
-    await _plugin.zonedSchedule(
-      id,
-      title,
-      body,
-      tzScheduledTime,
-      details,
-      payload: payload,
-      androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
-    );
+    try {
+      await _plugin.zonedSchedule(
+        id,
+        title,
+        body,
+        tzScheduledTime,
+        details,
+        payload: payload,
+        androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
+        matchDateTimeComponents: matchDateTimeComponents,
+      );
 
-    debugPrint(
-        '[NotificationService] Scheduled notification $id at $scheduledTime');
-    return id;
+      debugPrint(
+          '[NotificationService] ✅ Successfully scheduled notification ID $id ("$title") at $scheduledTime (TZ local: ${tz.local.name}, tzScheduled: $tzScheduledTime, matchComponents: $matchDateTimeComponents)');
+      return id;
+    } catch (e, st) {
+      debugPrint(
+          '[NotificationService] ❌ Failed to schedule notification ID $id ("$title") at $scheduledTime: $e');
+      debugPrint('[NotificationService] StackTrace: $st');
+      rethrow;
+    }
   }
 
   /// Show an immediate notification.

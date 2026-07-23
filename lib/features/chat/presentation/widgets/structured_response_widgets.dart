@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/theme/app_colors.dart';
-import '../../../../core/providers/core_providers.dart';
+import '../../../tasks/providers/task_provider.dart';
 import '../../domain/ai_response_models.dart';
 
 // Helper functions for adding tasks to the real database
@@ -16,7 +16,7 @@ Future<void> _addSingleTask(
   final messenger = ScaffoldMessenger.of(context);
   debugPrint('Supabase task insertion triggered (Single): title="$title", description="$description", priority="$priority", dueDate=$dueDate');
   try {
-    await ref.read(taskServiceProvider).addTask(
+    await ref.read(allTasksProvider.notifier).addTask(
       title: title,
       description: description,
       priority: priority.toLowerCase().trim(),
@@ -48,7 +48,7 @@ Future<void> _addAllTasks(
   WidgetRef ref,
   List<Map<String, dynamic>> tasks,
 ) async {
-  final taskService = ref.read(taskServiceProvider);
+  final notifier = ref.read(allTasksProvider.notifier);
   final messenger = ScaffoldMessenger.of(context);
   int count = 0;
   
@@ -69,7 +69,7 @@ Future<void> _addAllTasks(
 
   try {
     for (var t in tasks) {
-      await taskService.addTask(
+      await notifier.addTask(
         title: t['title'] ?? '',
         description: t['description'] ?? '',
         priority: (t['priority'] ?? 'medium').toString().toLowerCase().trim(),

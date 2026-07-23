@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/foundation.dart';
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../data/habit_model.dart';
 import '../../../core/providers/core_providers.dart';
@@ -42,7 +43,7 @@ class HabitListNotifier extends AsyncNotifier<List<HabitModel>> {
   }) async {
     try {
       final service = ref.read(habitServiceProvider);
-      await service.addHabit(
+      final created = await service.addHabit(
         title: title,
         description: description,
         frequency: frequency,
@@ -51,9 +52,11 @@ class HabitListNotifier extends AsyncNotifier<List<HabitModel>> {
         targetDays: targetDays,
       );
 
+      final habitId = created?['id'] as String?;
+
       // Schedule reminder if configured (Decision #8)
-      if (reminderTime != null && reminderTime.isNotEmpty) {
-        await _scheduleReminder(title, reminderTime);
+      if (reminderTime != null && reminderTime.isNotEmpty && habitId != null) {
+        await _scheduleReminder(habitId, title, reminderTime);
       }
 
       ref.invalidateSelf();
@@ -122,6 +125,9 @@ class HabitListNotifier extends AsyncNotifier<List<HabitModel>> {
     final previous = state.value ?? [];
     state = AsyncData(previous.where((h) => h.id != habitId).toList());
 
+    // Cancel both notifications (pre-reminder + due-time) on delete
+    await _cancelReminder(habitId.hashCode);
+
     try {
       final service = ref.read(habitServiceProvider);
       await service.deleteHabit(habitId);
@@ -156,6 +162,32 @@ class HabitListNotifier extends AsyncNotifier<List<HabitModel>> {
         isActive: isActive,
         clearReminder: clearReminder,
       );
+
+      final currentHabit = state.value?.firstWhere(
+        (h) => h.id == habitId,
+        orElse: () => HabitModel(
+          id: habitId,
+          title: title ?? 'Habit',
+          frequency: 'daily',
+          color: '#6C63FF',
+          targetDays: 30,
+          currentStreak: 0,
+          bestStreak: 0,
+          isActive: true,
+          isCompletedToday: false,
+          createdAt: DateTime.now(),
+        ),
+      );
+      final updatedTitle = title ?? currentHabit?.title ?? 'Habit';
+
+      if (clearReminder) {
+        await _cancelReminder(habitId.hashCode);
+      } else if (reminderTime != null && reminderTime.isNotEmpty) {
+        // Cancel both old notifications before scheduling updated ones
+        await _cancelReminder(habitId.hashCode);
+        await _scheduleReminder(habitId, updatedTitle, reminderTime);
+      }
+
       ref.invalidateSelf();
     } catch (e) {
       debugPrint('[HabitProvider] Error updating habit: $e');
@@ -167,8 +199,11 @@ class HabitListNotifier extends AsyncNotifier<List<HabitModel>> {
     ref.invalidateSelf();
   }
 
-  /// Schedule a daily reminder notification (Decision #8).
-  Future<void> _scheduleReminder(String title, String time) async {
+  /// Schedule daily reminder notifications (Decision #8).
+  /// Schedules two notifications:
+  ///   - [habitId.hashCode + 1]: 5 minutes BEFORE the reminder time (pre-reminder)
+  ///   - [habitId.hashCode]    : at the reminder time (due-time)
+  Future<void> _scheduleReminder(String habitId, String title, String time) async {
     try {
       final parts = time.split(':');
       if (parts.length != 2) return;
@@ -177,23 +212,61 @@ class HabitListNotifier extends AsyncNotifier<List<HabitModel>> {
       final minute = int.parse(parts[1]);
 
       final now = DateTime.now();
-      var scheduledTime =
-          DateTime(now.year, now.month, now.day, hour, minute);
+      var dueTime = DateTime(now.year, now.month, now.day, hour, minute);
 
-      if (scheduledTime.isBefore(now)) {
-        scheduledTime = scheduledTime.add(const Duration(days: 1));
+      // If the time has already passed today, schedule for tomorrow
+      if (dueTime.isBefore(now)) {
+        dueTime = dueTime.add(const Duration(days: 1));
       }
 
+      final dueNotifId = habitId.hashCode;
+      final preNotifId = habitId.hashCode + 1;
       final notifService = NotificationService();
+
+      // --- 5-minute pre-reminder ---
+      final preReminderTime = dueTime.subtract(const Duration(minutes: 5));
+      debugPrint(
+          '[HabitProvider] Scheduling habit pre-reminder: habitId=$habitId, title="$title" -> preReminderTime=$preReminderTime (Notif ID=$preNotifId)');
+      if (preReminderTime.isAfter(now)) {
+        await notifService.scheduleNotification(
+          id: preNotifId,
+          title: 'Habit Starting Soon ⏰',
+          body: '$title — starts in 5 minutes!',
+          scheduledTime: preReminderTime,
+          payload: 'habit_pre:$habitId',
+          matchDateTimeComponents: DateTimeComponents.time,
+        );
+      } else {
+        debugPrint(
+            '[HabitProvider] Skipping pre-reminder for "$title" (preReminderTime $preReminderTime already passed)');
+      }
+
+      // --- Due-time reminder ---
+      debugPrint(
+          '[HabitProvider] Scheduling habit due-time reminder: habitId=$habitId, title="$title" -> dueTime=$dueTime (Notif ID=$dueNotifId)');
       await notifService.scheduleNotification(
-        id: title.hashCode,
+        id: dueNotifId,
         title: 'Habit Reminder 🔔',
         body: 'Time to work on: $title',
-        scheduledTime: scheduledTime,
-        payload: 'habit:$title',
+        scheduledTime: dueTime,
+        payload: 'habit:$habitId',
+        matchDateTimeComponents: DateTimeComponents.time,
       );
     } catch (e) {
-      debugPrint('[HabitProvider] Error scheduling reminder: $e');
+      debugPrint('[HabitProvider] Error scheduling reminder for habit $habitId: $e');
+    }
+  }
+
+  /// Cancels both the due-time notification (notifId) and the
+  /// 5-minute pre-reminder (notifId + 1).
+  Future<void> _cancelReminder(int notifId) async {
+    try {
+      final notifService = NotificationService();
+      await notifService.cancelNotification(notifId);     // due-time
+      await notifService.cancelNotification(notifId + 1); // pre-reminder
+      debugPrint('[HabitProvider] Cancelled habit notification IDs: $notifId and ${notifId + 1}');
+    } catch (e) {
+      debugPrint('[HabitProvider] Error cancelling habit reminder ID $notifId: $e');
     }
   }
 }

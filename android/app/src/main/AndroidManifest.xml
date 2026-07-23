@@ -31,7 +31,10 @@
             </intent-filter>
         </activity>
 
-        <!-- Scheduled Notifications Boot Receiver to reschedule notifications on reboot -->
+        <!-- Required receiver that actually fires the notification at the scheduled time -->
+        <receiver android:exported="false" android:name="com.dexterous.flutterlocalnotifications.ScheduledNotificationReceiver" />
+
+        <!-- Boot receiver to reschedule notifications after device reboot -->
         <receiver android:name="com.dexterous.flutterlocalnotifications.ScheduledNotificationBootReceiver"
                   android:exported="false">
             <intent-filter>

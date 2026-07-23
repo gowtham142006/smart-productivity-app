@@ -30,14 +30,14 @@ class TaskService {
     return await query.order(orderBy, ascending: ascending);
   }
 
-  Future<void> addTask({
+  Future<Map<String, dynamic>?> addTask({
     required String title,
     String description = '',
     String priority = 'medium',
     String? categoryId,
     DateTime? dueDate,
   }) async {
-    if (_userId == null) return;
+    if (_userId == null) return null;
 
     final data = <String, dynamic>{
       'title': title,
@@ -50,7 +50,8 @@ class TaskService {
     if (categoryId != null) data['category_id'] = categoryId;
     if (dueDate != null) data['due_date'] = dueDate.toIso8601String();
 
-    await _client.from('tasks').insert(data);
+    final res = await _client.from('tasks').insert(data).select().single();
+    return res;
   }
 
   Future<void> updateTask({

@@ -3,7 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../data/message_model.dart';
-import '../../../../core/providers/core_providers.dart';
+import '../../../tasks/providers/task_provider.dart';
 import '../../domain/ai_response_models.dart';
 import 'structured_response_widgets.dart';
 
@@ -241,11 +241,11 @@ class ChatBubble extends ConsumerWidget {
                   if (tasks.isNotEmpty)
                     TextButton.icon(
                       onPressed: () async {
-                        final taskService = ref.read(taskServiceProvider);
+                        final notifier = ref.read(allTasksProvider.notifier);
                         final messenger = ScaffoldMessenger.of(context);
                         try {
                           for (var t in tasks) {
-                            await taskService.addTask(title: t);
+                            await notifier.addTask(title: t);
                           }
                           messenger.showSnackBar(
                             SnackBar(

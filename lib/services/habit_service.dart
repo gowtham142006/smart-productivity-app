@@ -43,8 +43,8 @@ class HabitService {
     }
   }
 
-  /// Create a new habit.
-  Future<void> addHabit({
+  /// Create a new habit and return the inserted record.
+  Future<Map<String, dynamic>?> addHabit({
     required String title,
     String? description,
     String frequency = 'daily',
@@ -54,11 +54,11 @@ class HabitService {
   }) async {
     if (_userId == null) {
       debugPrint('[HabitService] addHabit failed: no userId');
-      return;
+      return null;
     }
 
     try {
-      await _client.from('habits').insert({
+      final res = await _client.from('habits').insert({
         'user_id': _userId,
         'title': title,
         'description': description ?? '',
@@ -69,8 +69,9 @@ class HabitService {
         'current_streak': 0,
         'best_streak': 0,
         'is_active': true,
-      });
-      debugPrint('[HabitService] ✅ Habit "$title" created successfully');
+      }).select().single();
+      debugPrint('[HabitService] ✅ Habit "$title" created successfully with ID: ${res['id']}');
+      return res;
     } catch (e) {
       debugPrint('[HabitService] ❌ Error creating habit "$title": $e');
       rethrow;
