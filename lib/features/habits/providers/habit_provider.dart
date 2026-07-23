@@ -183,9 +183,15 @@ class HabitListNotifier extends AsyncNotifier<List<HabitModel>> {
       if (clearReminder) {
         await _cancelReminder(habitId.hashCode);
       } else if (reminderTime != null && reminderTime.isNotEmpty) {
-        // Cancel both old notifications before scheduling updated ones
+        // Cancel old notifications before scheduling updated ones
         await _cancelReminder(habitId.hashCode);
         await _scheduleReminder(habitId, updatedTitle, reminderTime);
+      } else if (currentHabit?.reminderTime != null &&
+          currentHabit!.reminderTime!.isNotEmpty) {
+        // If title changed but reminder time stayed the same, reschedule with updated title
+        await _cancelReminder(habitId.hashCode);
+        await _scheduleReminder(
+            habitId, updatedTitle, currentHabit.reminderTime!);
       }
 
       ref.invalidateSelf();
