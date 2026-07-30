@@ -10,7 +10,6 @@ import '../../../notes/providers/note_provider.dart';
 import '../../../notifications/providers/notification_history_provider.dart';
 import '../widgets/current_streak_card.dart';
 import '../widgets/upcoming_deadlines_card.dart';
-import '../widgets/todays_habits_card.dart';
 import '../widgets/recent_notes_card.dart';
 import '../widgets/productivity_summary_card.dart';
 import '../widgets/daily_plan_card.dart';
@@ -79,7 +78,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
               children: [
                 const SizedBox(height: 8),
 
-                // ─── Greeting + Avatar + Notification Bell ───
+                // 1. ─── Greeting + Avatar ───
                 Row(
                   children: [
                     // Avatar
@@ -107,17 +106,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                         ],
                       ),
                     ),
-                    // Notification bell
-                    _buildNotificationBell(context, unreadNotifs),
                   ],
                 ),
                 const SizedBox(height: 20),
 
-                // ─── Current Streak ───
-                const CurrentStreakCard(),
-                const SizedBox(height: 20),
-
-                // ─── Today's Progress (Stats Grid) ───
+                // 2. ─── Today's Progress (Stats Grid) ───
                 Text(
                   'Today\'s Progress',
                   style: Theme.of(context).textTheme.titleMedium?.copyWith(
@@ -170,15 +163,20 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                 ),
                 const SizedBox(height: 24),
 
-                // ─── Upcoming Deadlines ───
+                // 3. ─── Current Streak ───
+                const CurrentStreakCard(),
+                const SizedBox(height: 24),
+
+                // 4. ─── AI Planner ───
+                const DailyPlanCard(),
+                const AiTaskSuggestions(),
+                const SizedBox(height: 24),
+
+                // 5. ─── Upcoming Deadlines ───
                 const UpcomingDeadlinesCard(),
                 const SizedBox(height: 24),
 
-                // ─── Today's Habits ───
-                const TodaysHabitsCard(),
-                const SizedBox(height: 24),
-
-                // ─── Quick Actions ───
+                // 6. ─── Quick Actions ───
                 Text(
                   'Quick Access',
                   style: Theme.of(context).textTheme.titleMedium?.copyWith(
@@ -247,20 +245,14 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                 ),
                 const SizedBox(height: 24),
 
-                // ─── AI Daily Planner ───
-                const DailyPlanCard(),
-
-                // ─── AI Task Suggestions ───
-                const AiTaskSuggestions(),
-                const SizedBox(height: 24),
-
-                // ─── Recent Notes ───
+                // 7. ─── Recent Notes ───
                 const RecentNotesCard(),
                 const SizedBox(height: 24),
 
-                // ─── Productivity Summary ───
+                // 8. ─── Productivity Summary ───
                 const ProductivitySummaryCard(),
                 const SizedBox(height: 32),
+
               ],
             ),
           ),
@@ -304,39 +296,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
           fontSize: 18,
         ),
       ),
-    );
-  }
-
-  Widget _buildNotificationBell(BuildContext context, int unreadCount) {
-    return Stack(
-      children: [
-        IconButton(
-          icon: const Icon(Icons.notifications_outlined, size: 26),
-          onPressed: () => context.push('/notifications'),
-        ),
-        if (unreadCount > 0)
-          Positioned(
-            right: 6,
-            top: 6,
-            child: Container(
-              padding: const EdgeInsets.all(4),
-              decoration: const BoxDecoration(
-                color: AppColors.error,
-                shape: BoxShape.circle,
-              ),
-              constraints: const BoxConstraints(minWidth: 18, minHeight: 18),
-              child: Text(
-                unreadCount > 9 ? '9+' : '$unreadCount',
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 10,
-                  fontWeight: FontWeight.w700,
-                ),
-                textAlign: TextAlign.center,
-              ),
-            ),
-          ),
-      ],
     );
   }
 

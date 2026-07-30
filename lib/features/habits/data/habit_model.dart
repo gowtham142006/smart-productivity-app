@@ -57,6 +57,28 @@ class HabitModel {
     }
   }
 
+  String? get formattedReminderTime {
+    if (reminderTime == null || reminderTime!.isEmpty) return null;
+    try {
+      final parts = reminderTime!.split(':');
+      if (parts.length >= 2) {
+        int hour = int.parse(parts[0]);
+        int minute = int.parse(parts[1]);
+        final period = hour >= 12 ? 'PM' : 'AM';
+        
+        if (hour == 0) {
+          hour = 12;
+        } else if (hour > 12) {
+          hour -= 12;
+        }
+        
+        final minuteStr = minute.toString().padLeft(2, '0');
+        return '$hour:$minuteStr $period';
+      }
+    } catch (_) {}
+    return reminderTime;
+  }
+
   HabitModel copyWith({
     String? title,
     String? description,

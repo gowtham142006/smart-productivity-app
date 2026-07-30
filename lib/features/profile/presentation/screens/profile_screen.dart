@@ -193,20 +193,7 @@ class ProfileScreen extends ConsumerWidget {
                   _SettingsTile(
                     icon: Icons.notifications_outlined,
                     title: 'Notifications',
-                    onTap: () async {
-                      final notifService =
-                          ref.read(notificationServiceProvider);
-                      final granted =
-                          await notifService.requestPermissions();
-                      if (!context.mounted) return;
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text(granted
-                              ? 'Notifications enabled'
-                              : 'Notifications permission denied'),
-                        ),
-                      );
-                    },
+                    onTap: () => context.push('/notifications'),
                   ),
                 ],
               ),

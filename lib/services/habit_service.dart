@@ -43,6 +43,24 @@ class HabitService {
     }
   }
 
+  /// Get all recent completions (last 365 days) for streak calculation
+  Future<List<Map<String, dynamic>>> getAllRecentCompletions() async {
+    if (_userId == null) return [];
+
+    try {
+      final oneYearAgo = DateTime.now().subtract(const Duration(days: 365)).toIso8601String().split('T').first;
+      return await _client
+          .from('habit_logs')
+          .select('habit_id, completed_at')
+          .eq('status', 'completed')
+          .gte('completed_at', oneYearAgo)
+          .order('completed_at', ascending: false);
+    } catch (e) {
+      debugPrint('[HabitService] Error fetching recent completions: $e');
+      return [];
+    }
+  }
+
   /// Create a new habit and return the inserted record.
   Future<Map<String, dynamic>?> addHabit({
     required String title,

@@ -709,44 +709,48 @@ class _HabitTile extends StatelessWidget {
           ),
           child: const Icon(Icons.delete_rounded, color: AppColors.error),
         ),
-        child: GestureDetector(
-          onTap: onToggle,
-          onLongPress: onEdit,
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 300),
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: habit.isCompletedToday
-                  ? habit.colorValue.withValues(alpha: 0.08)
-                  : Theme.of(context).cardTheme.color,
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(
+        child: Card(
+          child: InkWell(
+            onTap: onEdit,
+            borderRadius: BorderRadius.circular(16),
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 300),
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
                 color: habit.isCompletedToday
-                    ? habit.colorValue.withValues(alpha: 0.3)
-                    : Colors.grey.withValues(alpha: 0.15),
+                    ? habit.colorValue.withValues(alpha: 0.08)
+                    : Theme.of(context).cardTheme.color,
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(
+                  color: habit.isCompletedToday
+                      ? habit.colorValue.withValues(alpha: 0.3)
+                      : Colors.transparent,
+                ),
               ),
-            ),
-            child: Row(
-              children: [
-                // Checkbox
-                AnimatedContainer(
-                  duration: const Duration(milliseconds: 200),
-                  width: 28,
-                  height: 28,
-                  decoration: BoxDecoration(
-                    color: habit.isCompletedToday
-                        ? habit.colorValue
-                        : Colors.transparent,
-                    shape: BoxShape.circle,
-                    border: Border.all(
-                      color: habit.colorValue,
-                      width: 2,
+              child: Row(
+                children: [
+                  // Checkbox
+                  GestureDetector(
+                    onTap: onToggle,
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 200),
+                      width: 28,
+                      height: 28,
+                      decoration: BoxDecoration(
+                        color: habit.isCompletedToday
+                            ? habit.colorValue
+                            : Colors.transparent,
+                        shape: BoxShape.circle,
+                        border: Border.all(
+                          color: habit.colorValue,
+                          width: 2,
+                        ),
+                      ),
+                      child: habit.isCompletedToday
+                          ? const Icon(Icons.check, color: Colors.white, size: 16)
+                          : null,
                     ),
                   ),
-                  child: habit.isCompletedToday
-                      ? const Icon(Icons.check, color: Colors.white, size: 16)
-                      : null,
-                ),
                 const SizedBox(width: 14),
 
                 // Title and streak
@@ -793,7 +797,7 @@ class _HabitTile extends StatelessWidget {
                 ),
 
                 // Reminder indicator
-                if (habit.reminderTime != null)
+                if (habit.formattedReminderTime != null)
                   Padding(
                     padding: const EdgeInsets.only(right: 4),
                     child: Row(
@@ -806,7 +810,7 @@ class _HabitTile extends StatelessWidget {
                         ),
                         const SizedBox(width: 2),
                         Text(
-                          habit.reminderTime!,
+                          habit.formattedReminderTime!,
                           style: const TextStyle(
                             fontSize: 12,
                             color: AppColors.textTertiary,
@@ -815,17 +819,10 @@ class _HabitTile extends StatelessWidget {
                       ],
                     ),
                   ),
-
-                IconButton(
-                  icon: const Icon(Icons.edit_outlined, size: 18),
-                  color: AppColors.textTertiary,
-                  constraints: const BoxConstraints(),
-                  padding: const EdgeInsets.all(8),
-                  onPressed: onEdit,
-                ),
               ],
             ),
           ),
+        ),
         ),
       ),
     );

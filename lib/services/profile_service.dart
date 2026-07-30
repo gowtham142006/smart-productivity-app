@@ -32,7 +32,9 @@ class ProfileService {
     if (avatarUrl != null) updates['avatar_url'] = avatarUrl;
 
     if (updates.isNotEmpty) {
-      await _client.from('profiles').update(updates).eq('id', _userId!);
+      updates['id'] = _userId!;
+      updates['updated_at'] = DateTime.now().toIso8601String();
+      await _client.from('profiles').upsert(updates);
     }
   }
 
@@ -54,14 +56,14 @@ class ProfileService {
             ),
           );
 
-      // Get the public URL
-      final publicUrl =
-          _client.storage.from('avatars').getPublicUrl(filePath);
+      // Get the public URL and append a timestamp to bust the cache
+      final baseUrl = _client.storage.from('avatars').getPublicUrl(filePath);
+      final timestamp = DateTime.now().millisecondsSinceEpoch;
+      final publicUrl = '$baseUrl?t=$timestamp';
 
       // Update profile with new avatar URL
       await updateProfile(avatarUrl: publicUrl);
 
-      debugPrint('[ProfileService] Uploaded avatar: $publicUrl');
       return publicUrl;
     } catch (e) {
       debugPrint('[ProfileService] Error uploading avatar: $e');

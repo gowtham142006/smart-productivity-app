@@ -5,15 +5,13 @@ import 'package:intl/intl.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../tasks/providers/task_provider.dart';
 import '../../../tasks/data/task_model.dart';
-import '../../../habits/providers/habit_provider.dart';
-import '../../../habits/data/habit_model.dart';
 import '../../providers/calendar_provider.dart';
 import '../../data/calendar_event_model.dart';
 import 'add_edit_event_screen.dart';
 import 'event_detail_screen.dart';
 
 /// Unified item type for the calendar agenda.
-enum _AgendaItemType { task, habit, event }
+enum _AgendaItemType { task, event }
 
 class _AgendaItem {
   final String id;
@@ -23,7 +21,8 @@ class _AgendaItem {
   final IconData icon;
   final _AgendaItemType type;
   final bool isCompleted;
-  final dynamic data; // TaskModel, HabitModel, or CalendarEventModel
+  final String? category;
+  final dynamic data; // TaskModel or CalendarEventModel
 
   const _AgendaItem({
     required this.id,
@@ -33,6 +32,7 @@ class _AgendaItem {
     required this.icon,
     required this.type,
     this.isCompleted = false,
+    this.category,
     this.data,
   });
 }
@@ -55,11 +55,10 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
     _selectedDay = _focusedDay;
   }
 
-  /// Build agenda items for a given day combining tasks, habits, and events.
+  /// Build agenda items for a given day combining tasks and events.
   List<_AgendaItem> _getItemsForDay(
     DateTime day,
     List<TaskModel> tasks,
-    List<HabitModel> habits,
     List<CalendarEventModel> events,
   ) {
     final items = <_AgendaItem>[];
@@ -81,22 +80,6 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
       }
     }
 
-    // Daily habits show every day
-    final today = DateTime.now();
-    if (isSameDay(day, today)) {
-      for (final habit in habits.where((h) => h.isActive)) {
-        items.add(_AgendaItem(
-          id: habit.id,
-          title: habit.title,
-          color: AppColors.success,
-          icon: Icons.repeat_rounded,
-          type: _AgendaItemType.habit,
-          isCompleted: habit.isCompletedToday,
-          data: habit,
-        ));
-      }
-    }
-
     // Calendar events on this day
     for (final event in events) {
       if (isSameDay(event.startDatetime, day)) {
@@ -108,6 +91,7 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
           color: event.colorValue,
           icon: Icons.event_rounded,
           type: _AgendaItemType.event,
+          category: event.category,
           data: event,
         ));
       }
@@ -148,36 +132,21 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
       }
     }
 
-    // Show green dot for today if there are active habits
-    final today = DateTime.now();
-    if (isSameDay(day, today)) {
-      items.add(const _AgendaItem(
-        id: 'habits_today',
-        title: 'Habits',
-        color: AppColors.success,
-        icon: Icons.repeat_rounded,
-        type: _AgendaItemType.habit,
-      ));
-    }
-
     return items;
   }
 
   @override
   Widget build(BuildContext context) {
     final allTasks = ref.watch(allTasksProvider);
-    final habitsAsync = ref.watch(habitListProvider);
     final eventsAsync = ref.watch(calendarEventProvider);
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     final tasks = allTasks.value ?? [];
-    final habits = habitsAsync.value ?? [];
     final events = eventsAsync.value ?? [];
 
     final selectedItems = _getItemsForDay(
       _selectedDay ?? _focusedDay,
       tasks,
-      habits,
       events,
     );
 
@@ -378,8 +347,6 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
               children: [
                 _LegendDot(color: AppColors.info, label: 'Tasks'),
                 const SizedBox(width: 16),
-                _LegendDot(color: AppColors.success, label: 'Habits'),
-                const SizedBox(width: 16),
                 _LegendDot(color: AppColors.primary, label: 'Events'),
                 const Spacer(),
                 Container(
@@ -456,9 +423,6 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
       if (result == true) {
         ref.read(calendarEventProvider.notifier).refresh();
       }
-    } else if (item.type == _AgendaItemType.habit) {
-      final habit = item.data as HabitModel;
-      ref.read(habitListProvider.notifier).toggleCompletion(habit.id);
     }
     // Tasks navigate to tasks screen handled elsewhere if needed
   }
@@ -531,6 +495,26 @@ class _AgendaTile extends StatelessWidget {
                   ],
                 ),
               ),
+              // Category badge
+              if (item.category != null) ...[
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: item.color.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: Text(
+                    item.category!,
+                    style: TextStyle(
+                      fontSize: 10,
+                      fontWeight: FontWeight.w600,
+                      color: item.color,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+              ],
               // Type badge
               Container(
                 padding:
@@ -564,8 +548,6 @@ class _AgendaTile extends StatelessWidget {
     switch (type) {
       case _AgendaItemType.task:
         return 'Task';
-      case _AgendaItemType.habit:
-        return 'Habit';
       case _AgendaItemType.event:
         return 'Event';
     }

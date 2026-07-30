@@ -294,6 +294,7 @@ class _AddEditEventScreenState extends ConsumerState<AddEditEventScreen> {
                 runSpacing: 8,
                 children: _categories.map((cat) {
                   final isSelected = _selectedCategory == cat;
+                  final colorScheme = Theme.of(context).colorScheme;
                   return ChoiceChip(
                     label: Text(cat),
                     selected: isSelected,
@@ -302,10 +303,15 @@ class _AddEditEventScreenState extends ConsumerState<AddEditEventScreen> {
                         _selectedCategory = selected ? cat : null;
                       });
                     },
-                    selectedColor: AppColors.primary.withValues(alpha: 0.15),
+                    backgroundColor: colorScheme.surfaceContainerHighest,
+                    selectedColor: colorScheme.primaryContainer,
                     labelStyle: TextStyle(
-                      color: isSelected ? AppColors.primary : null,
+                      color: isSelected ? colorScheme.onPrimaryContainer : colorScheme.onSurfaceVariant,
                       fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
+                    ),
+                    side: BorderSide.none,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
                     ),
                   );
                 }).toList(),
@@ -413,7 +419,7 @@ class _AddEditEventScreenState extends ConsumerState<AddEditEventScreen> {
           _startTime = picked;
         } else {
           _endTime = picked;
-          if (_endDate == null) _endDate = _startDate;
+          _endDate ??= _startDate;
         }
       });
     }
