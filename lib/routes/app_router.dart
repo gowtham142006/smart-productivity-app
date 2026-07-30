@@ -17,6 +17,7 @@ import '../features/calendar/presentation/screens/calendar_screen.dart';
 import '../features/habits/presentation/screens/habits_screen.dart';
 import '../features/pomodoro/presentation/screens/pomodoro_screen.dart';
 import '../features/analytics/presentation/screens/analytics_screen.dart';
+import '../features/notifications/presentation/screens/notification_history_screen.dart';
 import 'shell_scaffold.dart';
 
 /// Converts a Supabase auth state [Stream] into a [Listenable]
@@ -138,6 +139,10 @@ final GoRouter appRouter = GoRouter(
     GoRoute(
       path: '/analytics',
       builder: (context, state) => const AnalyticsScreen(),
+    ),
+    GoRoute(
+      path: '/notifications',
+      builder: (context, state) => const NotificationHistoryScreen(),
     ),
   ],
 );

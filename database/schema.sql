@@ -196,6 +196,38 @@ FULL OUTER JOIN (
    AND ps_agg.date = COALESCE(ts.date, hs.date);
 
 -- =====================================================
+-- CALENDAR EVENTS
+-- =====================================================
+
+CREATE TABLE calendar_events (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+
+    user_id UUID NOT NULL
+        REFERENCES auth.users(id)
+        ON DELETE CASCADE,
+
+    title TEXT NOT NULL,
+
+    description TEXT,
+
+    start_datetime TIMESTAMPTZ NOT NULL,
+
+    end_datetime TIMESTAMPTZ,
+
+    color TEXT DEFAULT '#5B67F1',
+
+    category TEXT,
+
+    location TEXT,
+
+    notes TEXT,
+
+    created_at TIMESTAMPTZ DEFAULT now(),
+
+    updated_at TIMESTAMPTZ DEFAULT now()
+);
+
+-- =====================================================
 -- NOTIFICATION SETTINGS
 -- =====================================================
 
@@ -220,6 +252,30 @@ CREATE TABLE notification_settings (
     sound_enabled BOOLEAN DEFAULT TRUE,
 
     vibration_enabled BOOLEAN DEFAULT TRUE
+);
+
+-- =====================================================
+-- NOTIFICATIONS
+-- =====================================================
+
+CREATE TABLE notifications (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+
+    user_id UUID NOT NULL
+        REFERENCES auth.users(id)
+        ON DELETE CASCADE,
+
+    title TEXT NOT NULL,
+
+    body TEXT NOT NULL,
+
+    type TEXT NOT NULL,
+
+    payload JSONB,
+
+    is_read BOOLEAN DEFAULT FALSE,
+
+    created_at TIMESTAMPTZ DEFAULT now()
 );
 
 -- =====================================================

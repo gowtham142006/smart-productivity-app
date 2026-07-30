@@ -40,13 +40,13 @@ void _validateFields({
       final value = json[key];
       if (value != null) {
         bool isValid = false;
-        if (expectedType == String && value is String) isValid = true;
-        else if (expectedType == int && value is int) isValid = true;
-        else if (expectedType == double && value is double) isValid = true;
-        else if (expectedType == num && value is num) isValid = true;
-        else if (expectedType == List && value is List) isValid = true;
-        else if (expectedType == Map && value is Map) isValid = true;
-        else if (expectedType == bool && value is bool) isValid = true;
+        if (expectedType == String && value is String) { isValid = true; }
+        else if (expectedType == int && value is int) { isValid = true; }
+        else if (expectedType == double && value is double) { isValid = true; }
+        else if (expectedType == num && value is num) { isValid = true; }
+        else if (expectedType == List && value is List) { isValid = true; }
+        else if (expectedType == Map && value is Map) { isValid = true; }
+        else if (expectedType == bool && value is bool) { isValid = true; }
 
         if (!isValid) {
           debugPrint('Invalid type:\n$key expected ${expectedType.toString()} but received ${value.runtimeType.toString()}');

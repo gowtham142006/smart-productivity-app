@@ -10,6 +10,8 @@ import '../../services/habit_service.dart';
 import '../../services/daily_stats_service.dart';
 import '../../services/pomodoro_service.dart';
 import '../../services/profile_service.dart';
+import '../../services/notification_history_service.dart';
+import '../../services/calendar_event_service.dart';
 import '../../services/notification_service.dart';
 import '../../features/chat/domain/chat_repository.dart';
 
@@ -63,6 +65,14 @@ final profileServiceProvider = Provider<ProfileService>((ref) {
 
 final notificationServiceProvider = Provider<NotificationService>((ref) {
   return NotificationService();
+});
+
+final notificationHistoryServiceProvider = Provider<NotificationHistoryService>((ref) {
+  return NotificationHistoryService(ref.watch(supabaseClientProvider));
+});
+
+final calendarEventServiceProvider = Provider<CalendarEventService>((ref) {
+  return CalendarEventService(ref.watch(supabaseClientProvider));
 });
 
 // ─── Auth State ────────────────────────────────────

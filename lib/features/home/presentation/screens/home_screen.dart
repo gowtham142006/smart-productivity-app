@@ -1,206 +1,350 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/providers/core_providers.dart';
+import '../../../profile/providers/profile_provider.dart';
 import '../../../tasks/providers/task_provider.dart';
 import '../../../notes/providers/note_provider.dart';
+import '../../../notifications/providers/notification_history_provider.dart';
+import '../widgets/current_streak_card.dart';
+import '../widgets/upcoming_deadlines_card.dart';
+import '../widgets/todays_habits_card.dart';
+import '../widgets/recent_notes_card.dart';
+import '../widgets/productivity_summary_card.dart';
 import '../widgets/daily_plan_card.dart';
 import '../../../tasks/presentation/widgets/ai_task_suggestions.dart';
 
-class HomeScreen extends ConsumerWidget {
+class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends ConsumerState<HomeScreen>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _animController;
+  late Animation<double> _fadeAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+    _animController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 600),
+    );
+    _fadeAnimation = CurvedAnimation(
+      parent: _animController,
+      curve: Curves.easeOut,
+    );
+    _animController.forward();
+  }
+
+  @override
+  void dispose() {
+    _animController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    // Profile name sync: use profileProvider instead of email splitting
+    final profileAsync = ref.watch(profileProvider);
     final user = ref.watch(currentUserProvider);
     final email = user?.email ?? 'User';
-    final username = email.split('@').first;
+
+    // Fallback: email-based username if profile hasn't loaded yet
+    final profileName = profileAsync.value?.name;
+    final avatarUrl = profileAsync.value?.avatarUrl;
+    final username = (profileName != null && profileName.isNotEmpty)
+        ? profileName
+        : email.split('@').first;
 
     final pendingCount = ref.watch(pendingTasksCountProvider);
     final completedCount = ref.watch(completedTasksCountProvider);
     final overdueCount = ref.watch(overdueTasksCountProvider);
     final notesCount = ref.watch(notesCountProvider);
+    final unreadNotifs = ref.watch(unreadNotificationCountProvider);
 
     return Scaffold(
       body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(20),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const SizedBox(height: 8),
+        child: FadeTransition(
+          opacity: _fadeAnimation,
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const SizedBox(height: 8),
 
-              // Greeting
-              Row(
-                children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Hello, $username 👋',
-                          style: Theme.of(context)
-                              .textTheme
-                              .headlineSmall
-                              ?.copyWith(fontWeight: FontWeight.w700),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          'Stay productive today',
-                          style:
-                              Theme.of(context).textTheme.bodyMedium?.copyWith(
-                                    color: AppColors.textSecondary,
-                                  ),
-                        ),
-                      ],
+                // ─── Greeting + Avatar + Notification Bell ───
+                Row(
+                  children: [
+                    // Avatar
+                    _buildAvatar(username, avatarUrl),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Hello, $username 👋',
+                            style: Theme.of(context)
+                                .textTheme
+                                .headlineSmall
+                                ?.copyWith(fontWeight: FontWeight.w700),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            _getGreetingSubtitle(),
+                            style:
+                                Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                      color: AppColors.textSecondary,
+                                    ),
+                          ),
+                        ],
+                      ),
                     ),
-                  ),
-                  CircleAvatar(
-                    radius: 22,
-                    backgroundColor: AppColors.primary.withValues(alpha: 0.1),
-                    child: Text(
-                      username[0].toUpperCase(),
-                      style: const TextStyle(
-                        color: AppColors.primary,
+                    // Notification bell
+                    _buildNotificationBell(context, unreadNotifs),
+                  ],
+                ),
+                const SizedBox(height: 20),
+
+                // ─── Current Streak ───
+                const CurrentStreakCard(),
+                const SizedBox(height: 20),
+
+                // ─── Today's Progress (Stats Grid) ───
+                Text(
+                  'Today\'s Progress',
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
                         fontWeight: FontWeight.w700,
-                        fontSize: 18,
+                      ),
+                ),
+                const SizedBox(height: 12),
+                Row(
+                  children: [
+                    Expanded(
+                      child: _StatCard(
+                        label: 'Pending',
+                        count: pendingCount,
+                        icon: Icons.pending_actions,
+                        color: AppColors.info,
                       ),
                     ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 24),
-
-              // Stats grid
-              Row(
-                children: [
-                  Expanded(
-                    child: _StatCard(
-                      label: 'Pending',
-                      count: pendingCount,
-                      icon: Icons.pending_actions,
-                      color: AppColors.info,
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: _StatCard(
-                      label: 'Completed',
-                      count: completedCount,
-                      icon: Icons.check_circle_outline,
-                      color: AppColors.success,
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 12),
-              Row(
-                children: [
-                  Expanded(
-                    child: _StatCard(
-                      label: 'Overdue',
-                      count: overdueCount,
-                      icon: Icons.warning_amber_rounded,
-                      color: AppColors.error,
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: _StatCard(
-                      label: 'Notes',
-                      count: notesCount,
-                      icon: Icons.note_outlined,
-                      color: AppColors.warning,
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 24),
-
-              // AI Daily Planner Card
-              const DailyPlanCard(),
-
-              // AI Task Suggestions Card
-              const AiTaskSuggestions(),
-              const SizedBox(height: 16),
-
-              // Dashboard Modules (Decision #4: Open from Home)
-              Text(
-                'Quick Access',
-                style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.w700,
-                    ),
-              ),
-              const SizedBox(height: 12),
-
-              // Feature Grid — Calendar, Habits, Pomodoro, Analytics
-              Row(
-                children: [
-                  Expanded(
-                    child: _DashboardTile(
-                      title: 'Calendar',
-                      icon: Icons.calendar_month_rounded,
-                      gradient: const LinearGradient(
-                        colors: [Color(0xFF3B82F6), Color(0xFF60A5FA)],
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: _StatCard(
+                        label: 'Completed',
+                        count: completedCount,
+                        icon: Icons.check_circle_outline,
+                        color: AppColors.success,
                       ),
-                      onTap: () => context.push('/calendar'),
                     ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: _DashboardTile(
-                      title: 'Habits',
-                      icon: Icons.repeat_rounded,
-                      gradient: const LinearGradient(
-                        colors: [Color(0xFF10B981), Color(0xFF34D399)],
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
+                  ],
+                ),
+                const SizedBox(height: 12),
+                Row(
+                  children: [
+                    Expanded(
+                      child: _StatCard(
+                        label: 'Overdue',
+                        count: overdueCount,
+                        icon: Icons.warning_amber_rounded,
+                        color: AppColors.error,
                       ),
-                      onTap: () => context.push('/habits'),
                     ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 12),
-              Row(
-                children: [
-                  Expanded(
-                    child: _DashboardTile(
-                      title: 'Pomodoro',
-                      icon: Icons.timer_rounded,
-                      gradient: const LinearGradient(
-                        colors: [Color(0xFFEF4444), Color(0xFFF87171)],
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: _StatCard(
+                        label: 'Notes',
+                        count: notesCount,
+                        icon: Icons.note_outlined,
+                        color: AppColors.warning,
                       ),
-                      onTap: () => context.push('/pomodoro'),
                     ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: _DashboardTile(
-                      title: 'Analytics',
-                      icon: Icons.insights_rounded,
-                      gradient: const LinearGradient(
-                        colors: [Color(0xFF8B5CF6), Color(0xFFA78BFA)],
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                      ),
-                      onTap: () => context.push('/analytics'),
-                    ),
-                  ),
-                ],
-              ),
+                  ],
+                ),
+                const SizedBox(height: 24),
 
-              const SizedBox(height: 24),
-            ],
+                // ─── Upcoming Deadlines ───
+                const UpcomingDeadlinesCard(),
+                const SizedBox(height: 24),
+
+                // ─── Today's Habits ───
+                const TodaysHabitsCard(),
+                const SizedBox(height: 24),
+
+                // ─── Quick Actions ───
+                Text(
+                  'Quick Access',
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w700,
+                      ),
+                ),
+                const SizedBox(height: 12),
+                Row(
+                  children: [
+                    Expanded(
+                      child: _DashboardTile(
+                        title: 'Calendar',
+                        icon: Icons.calendar_month_rounded,
+                        gradient: const LinearGradient(
+                          colors: [Color(0xFF3B82F6), Color(0xFF60A5FA)],
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                        ),
+                        onTap: () => context.push('/calendar'),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: _DashboardTile(
+                        title: 'Habits',
+                        icon: Icons.repeat_rounded,
+                        gradient: const LinearGradient(
+                          colors: [Color(0xFF10B981), Color(0xFF34D399)],
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                        ),
+                        onTap: () => context.push('/habits'),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                Row(
+                  children: [
+                    Expanded(
+                      child: _DashboardTile(
+                        title: 'Pomodoro',
+                        icon: Icons.timer_rounded,
+                        gradient: const LinearGradient(
+                          colors: [Color(0xFFEF4444), Color(0xFFF87171)],
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                        ),
+                        onTap: () => context.push('/pomodoro'),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: _DashboardTile(
+                        title: 'Analytics',
+                        icon: Icons.insights_rounded,
+                        gradient: const LinearGradient(
+                          colors: [Color(0xFF8B5CF6), Color(0xFFA78BFA)],
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                        ),
+                        onTap: () => context.push('/analytics'),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 24),
+
+                // ─── AI Daily Planner ───
+                const DailyPlanCard(),
+
+                // ─── AI Task Suggestions ───
+                const AiTaskSuggestions(),
+                const SizedBox(height: 24),
+
+                // ─── Recent Notes ───
+                const RecentNotesCard(),
+                const SizedBox(height: 24),
+
+                // ─── Productivity Summary ───
+                const ProductivitySummaryCard(),
+                const SizedBox(height: 32),
+              ],
+            ),
           ),
         ),
       ),
     );
+  }
+
+  Widget _buildAvatar(String username, String? avatarUrl) {
+    if (avatarUrl != null && avatarUrl.isNotEmpty) {
+      return CachedNetworkImage(
+        imageUrl: avatarUrl,
+        imageBuilder: (context, imageProvider) => CircleAvatar(
+          radius: 24,
+          backgroundImage: imageProvider,
+        ),
+        placeholder: (context, url) => CircleAvatar(
+          radius: 24,
+          backgroundColor: AppColors.primary.withValues(alpha: 0.1),
+          child: const SizedBox(
+            width: 16,
+            height: 16,
+            child: CircularProgressIndicator(strokeWidth: 2),
+          ),
+        ),
+        errorWidget: (context, url, error) => _buildInitialsAvatar(username),
+      );
+    }
+    return _buildInitialsAvatar(username);
+  }
+
+  Widget _buildInitialsAvatar(String username) {
+    return CircleAvatar(
+      radius: 24,
+      backgroundColor: AppColors.primary.withValues(alpha: 0.1),
+      child: Text(
+        username.isNotEmpty ? username[0].toUpperCase() : 'U',
+        style: const TextStyle(
+          color: AppColors.primary,
+          fontWeight: FontWeight.w700,
+          fontSize: 18,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildNotificationBell(BuildContext context, int unreadCount) {
+    return Stack(
+      children: [
+        IconButton(
+          icon: const Icon(Icons.notifications_outlined, size: 26),
+          onPressed: () => context.push('/notifications'),
+        ),
+        if (unreadCount > 0)
+          Positioned(
+            right: 6,
+            top: 6,
+            child: Container(
+              padding: const EdgeInsets.all(4),
+              decoration: const BoxDecoration(
+                color: AppColors.error,
+                shape: BoxShape.circle,
+              ),
+              constraints: const BoxConstraints(minWidth: 18, minHeight: 18),
+              child: Text(
+                unreadCount > 9 ? '9+' : '$unreadCount',
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 10,
+                  fontWeight: FontWeight.w700,
+                ),
+                textAlign: TextAlign.center,
+              ),
+            ),
+          ),
+      ],
+    );
+  }
+
+  String _getGreetingSubtitle() {
+    final hour = DateTime.now().hour;
+    if (hour < 12) return 'Good morning! Stay productive today ☀️';
+    if (hour < 17) return 'Good afternoon! Keep up the momentum 🚀';
+    return 'Good evening! Wind down with focus 🌙';
   }
 }
 
@@ -260,7 +404,7 @@ class _StatCard extends StatelessWidget {
   }
 }
 
-/// Dashboard tile for feature access (Decision #4).
+/// Dashboard tile for feature access.
 class _DashboardTile extends StatelessWidget {
   final String title;
   final IconData icon;
@@ -321,4 +465,3 @@ class _DashboardTile extends StatelessWidget {
     );
   }
 }
-

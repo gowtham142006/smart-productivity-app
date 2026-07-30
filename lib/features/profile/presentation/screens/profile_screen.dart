@@ -6,6 +6,7 @@ import 'package:image_picker/image_picker.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/theme_provider.dart';
 import '../../../../core/providers/core_providers.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import '../../providers/profile_provider.dart';
 
 class ProfileScreen extends ConsumerWidget {
@@ -39,13 +40,34 @@ class ProfileScreen extends ConsumerWidget {
                     radius: 48,
                     backgroundColor:
                         AppColors.primary.withValues(alpha: 0.1),
-                    backgroundImage: profile.avatarUrl != null &&
+                    child: profile.avatarUrl != null &&
                             profile.avatarUrl!.isNotEmpty
-                        ? NetworkImage(profile.avatarUrl!)
-                        : null,
-                    child: profile.avatarUrl == null ||
-                            profile.avatarUrl!.isEmpty
-                        ? Text(
+                        ? ClipOval(
+                            child: CachedNetworkImage(
+                              imageUrl: profile.avatarUrl!,
+                              width: 96,
+                              height: 96,
+                              fit: BoxFit.cover,
+                              placeholder: (context, url) => const Center(
+                                child: SizedBox(
+                                  width: 24,
+                                  height: 24,
+                                  child: CircularProgressIndicator(strokeWidth: 2),
+                                ),
+                              ),
+                              errorWidget: (context, url, error) => Text(
+                                profile.name.isNotEmpty
+                                    ? profile.name[0].toUpperCase()
+                                    : email[0].toUpperCase(),
+                                style: const TextStyle(
+                                  fontSize: 36,
+                                  fontWeight: FontWeight.w700,
+                                  color: AppColors.primary,
+                                ),
+                              ),
+                            ),
+                          )
+                        : Text(
                             profile.name.isNotEmpty
                                 ? profile.name[0].toUpperCase()
                                 : email[0].toUpperCase(),
@@ -54,8 +76,7 @@ class ProfileScreen extends ConsumerWidget {
                               fontWeight: FontWeight.w700,
                               color: AppColors.primary,
                             ),
-                          )
-                        : null,
+                          ),
                   ),
                   Positioned(
                     bottom: 0,
@@ -273,9 +294,102 @@ class ProfileScreen extends ConsumerWidget {
 
   Future<void> _pickAndUploadImage(
       BuildContext context, WidgetRef ref) async {
+    final profileState = ref.read(profileProvider).value;
+    final hasAvatar = profileState?.avatarUrl != null &&
+        profileState!.avatarUrl!.isNotEmpty;
+
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 12),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade300,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              const SizedBox(height: 16),
+              Text(
+                'Profile Photo',
+                style: Theme.of(ctx).textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.w700,
+                    ),
+              ),
+              const SizedBox(height: 12),
+              ListTile(
+                leading: Container(
+                  width: 40,
+                  height: 40,
+                  decoration: BoxDecoration(
+                    color: AppColors.primary.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: const Icon(Icons.camera_alt_rounded,
+                      color: AppColors.primary),
+                ),
+                title: const Text('Take Photo'),
+                onTap: () {
+                  Navigator.pop(ctx);
+                  _pickImage(context, ref, ImageSource.camera);
+                },
+              ),
+              ListTile(
+                leading: Container(
+                  width: 40,
+                  height: 40,
+                  decoration: BoxDecoration(
+                    color: AppColors.info.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: const Icon(Icons.photo_library_rounded,
+                      color: AppColors.info),
+                ),
+                title: const Text('Choose from Gallery'),
+                onTap: () {
+                  Navigator.pop(ctx);
+                  _pickImage(context, ref, ImageSource.gallery);
+                },
+              ),
+              if (hasAvatar)
+                ListTile(
+                  leading: Container(
+                    width: 40,
+                    height: 40,
+                    decoration: BoxDecoration(
+                      color: AppColors.error.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: const Icon(Icons.delete_outline,
+                        color: AppColors.error),
+                  ),
+                  title: const Text('Remove Photo',
+                      style: TextStyle(color: AppColors.error)),
+                  onTap: () {
+                    Navigator.pop(ctx);
+                    ref.read(profileProvider.notifier).removeAvatar();
+                  },
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _pickImage(
+      BuildContext context, WidgetRef ref, ImageSource source) async {
     final picker = ImagePicker();
     final picked = await picker.pickImage(
-      source: ImageSource.gallery,
+      source: source,
       maxWidth: 512,
       maxHeight: 512,
       imageQuality: 80,

@@ -1,38 +1,32 @@
-profiles
-    │
-    ├──────────────┐
-    │              │
-    ▼              ▼
-tasks          categories
+auth.users
+│
+├── profiles
+│
+├── categories
+│
+├── tasks
+│      │
+│      └── pomodoro_sessions
+│
+├── notes
+│
+├── habits
+│      │
+│      └── habit_logs
+│
+├── calendar_events
+│
+├── notification_settings
+│
+├── notifications
+│
+└── chat_conversations
+        │
+        └── chat_messages
 
-tasks
- │
- ▼
-pomodoro_sessions
 
-profiles
- │
- ▼
-habits
- │
- ├───────────────┐
- ▼               ▼
-habit_logs   habit_completions
-
-profiles
- │
- ▼
-notification_settings
-
-profiles
- │
- ▼
-chat_conversations
- │
- ▼
-chat_messages
-
-profiles
- │
- ▼
-daily_stats
+daily_stats (VIEW)
+│
+├── Aggregates tasks
+├── Aggregates habit_logs
+└── Aggregates pomodoro_sessions

@@ -1,25 +1,45 @@
 # AI Productivity App Database
 
-Database: Supabase (PostgreSQL)
+**Database:** Supabase (PostgreSQL)
+
+---
 
 ## Tables
 
 - profiles
+- categories
 - tasks
 - notes
-- categories
 - habits
 - habit_logs
-- habit_completions
 - pomodoro_sessions
+- calendar_events
 - notification_settings
-- daily_stats
+- notifications
 - chat_conversations
 - chat_messages
+
+---
+
+## Views
+
+- daily_stats
+
+---
+
+## Storage
+
+### avatars
+
+Stores user profile pictures.
+
+---
 
 ## PostgreSQL Functions
 
 - update_updated_at()
+
+---
 
 ## Planned Functions
 
@@ -29,14 +49,21 @@ Database: Supabase (PostgreSQL)
 - calculate_completion_rate(UUID)
 - calculate_today_stats(UUID)
 
+---
+
 ## Features
 
 - Authentication
-- Task Management
-- Notes
+- User Profiles
 - Categories
-- Habits
-- Pomodoro
-- Notifications
+- Task Management
+- Habit Tracking
+- Habit Streaks
+- Notes
+- Pomodoro Timer
+- Calendar Events
+- Notification Preferences
+- Notification History
 - AI Chat
-- Analytics
+- Analytics Dashboard
+- Profile Image Upload

@@ -1,39 +1,55 @@
 Profiles
 --------
-user profiles details
+Users manage their own profile.
 
 Tasks
 -----
-Users can view own tasks
-Users can create own tasks
-user can update own task
-user can delete their own task
+Users can:
+- View their own tasks
+- Create their own tasks
+- Update their own tasks
+- Delete their own tasks
 
 Categories
 ----------
-Users manage own categories
+Users manage their own categories.
 
 Habits
 ------
-User Access Own Habits
+Users manage their own habits.
 
 Habit Logs
 ----------
-User Access Own Habit Logs
+Users manage their own habit logs.
+
+Calendar Events
+---------------
+Users manage their own calendar events.
 
 Notification Settings
 ---------------------
-User access Own Notification
+Users manage their own notification preferences.
 
-Pomodoro
---------
-User Controls Sessions
+Notifications
+-------------
+Users manage their own notification history.
 
-Chat
-----
-Users manage own chat messages
-user conversation
+Pomodoro Sessions
+-----------------
+Users manage their own Pomodoro sessions.
+
+Chat Conversations
+------------------
+Users manage their own conversations.
+
+Chat Messages
+-------------
+Users manage their own chat messages.
 
 Notes
 -----
-user manage own notes
+Users manage their own notes.
+
+Daily Stats
+-----------
+Users can view their own daily statistics.
