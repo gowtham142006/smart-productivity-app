@@ -56,10 +56,11 @@ final GoRouter appRouter = GoRouter(
       return '/login';
     }
 
-    // Logged in and on auth route (not splash)
+    // Logged in and on auth route → go to home
     if (isLoggedIn &&
         (state.matchedLocation == '/login' ||
-            state.matchedLocation == '/signup')) {
+            state.matchedLocation == '/signup' ||
+            state.matchedLocation == '/')) {
       return '/home';
     }
 

@@ -22,10 +22,12 @@ Future<void> main() async {
     anonKey: dotenv.get('SUPABASE_ANON_KEY'),
   );
 
-  // Initialize notifications (Decision #10: permission_handler)
-  final notificationService = NotificationService();
-  await notificationService.init();
-  await notificationService.requestPermissions();
+  // Initialize notifications asynchronously to avoid blocking app launch
+  Future.microtask(() async {
+    final notificationService = NotificationService();
+    await notificationService.init();
+    await notificationService.requestPermissions();
+  });
 
   runApp(const ProviderScope(child: MyApp()));
 }

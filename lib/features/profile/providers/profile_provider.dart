@@ -40,13 +40,37 @@ class ProfileNotifier extends AsyncNotifier<ProfileState> {
   }
 
   Future<ProfileState> _loadProfile() async {
-    final user = ref.read(currentUserProvider);
+    final user = ref.watch(currentUserProvider);
+    if (user == null) {
+      return const ProfileState();
+    }
+
     final service = ref.read(profileServiceProvider);
-    final profile = await service.getProfile();
+    var profile = await service.getProfile();
+
+    // Auto-upsert profile on first verified login if no row exists
+    if (profile == null) {
+      final metaName = user.userMetadata?['name'] as String?;
+      final username = (metaName != null && metaName.isNotEmpty)
+          ? metaName
+          : user.email?.split('@').first ?? '';
+      await service.updateProfile(name: username);
+      // Re-fetch to get the full row
+      profile = await service.getProfile();
+    }
+
+    // Priority: profiles.name → user_metadata.name → email prefix
+    final profileName = profile?['name'] as String?;
+    final metaName = user.userMetadata?['name'] as String?;
+    final resolvedName = (profileName != null && profileName.isNotEmpty)
+        ? profileName
+        : (metaName != null && metaName.isNotEmpty)
+            ? metaName
+            : user.email?.split('@').first ?? '';
 
     return ProfileState(
-      name: profile?['name'] ?? user?.email?.split('@').first ?? '',
-      email: user?.email ?? '',
+      name: resolvedName,
+      email: user.email ?? '',
       avatarUrl: profile?['avatar_url'] as String?,
     );
   }

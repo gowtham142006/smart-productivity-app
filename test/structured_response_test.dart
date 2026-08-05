@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:ai_productivity_app/features/chat/domain/ai_response_models.dart';
+import 'package:smart_productivity_app/features/chat/domain/ai_response_models.dart';
 
 void main() {
   group('JSON Detection and Extraction', () {

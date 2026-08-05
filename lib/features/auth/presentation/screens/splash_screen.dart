@@ -13,13 +13,11 @@ class _SplashScreenState extends State<SplashScreen> {
   @override
   void initState() {
     super.initState();
-
-    checkAuth();
+    // Check auth immediately after first frame renders
+    WidgetsBinding.instance.addPostFrameCallback((_) => _checkAuth());
   }
 
-  Future<void> checkAuth() async {
-    await Future.delayed(const Duration(seconds: 1));
-
+  void _checkAuth() {
     final session = Supabase.instance.client.auth.currentSession;
 
     if (!mounted) return;

@@ -12,6 +12,7 @@ class LoginScreen extends StatefulWidget {
 
 class _LoginScreenState extends State<LoginScreen> {
   bool isHidden = true;
+  bool isLoading = false;
   final emailController = TextEditingController();
 
   final passwordController = TextEditingController();
@@ -104,24 +105,53 @@ class _LoginScreenState extends State<LoginScreen> {
                         SizedBox(
                           height: 52,
                           child: ElevatedButton(
-                            onPressed: () async {
-                              try {
-                                await authService.signIn(
-                                  email: emailController.text,
-                                  password: passwordController.text,
-                                );
+                            onPressed: isLoading
+                                ? null
+                                : () async {
+                                    if (emailController.text.trim().isEmpty ||
+                                        passwordController.text.isEmpty) {
+                                      return;
+                                    }
 
-                                debugPrint('Login Success');
+                                    setState(() {
+                                      isLoading = true;
+                                    });
 
-                                if (context.mounted) {
-                                  context.go('/home');
-                                }
-                              } catch (e) {
-                                debugPrint(e.toString());
-                              }
-                            },
-
-                            child: const Text('Login'),
+                                    try {
+                                      await authService.signIn(
+                                        email: emailController.text.trim(),
+                                        password: passwordController.text,
+                                      );
+                                      debugPrint('Login Success');
+                                      // Note: GoRouterRefreshStream handles navigation to /home automatically
+                                    } catch (e) {
+                                      debugPrint(e.toString());
+                                      if (context.mounted) {
+                                        ScaffoldMessenger.of(context).showSnackBar(
+                                          SnackBar(
+                                            content: Text(
+                                              e.toString().replaceAll('Exception: ', ''),
+                                            ),
+                                          ),
+                                        );
+                                      }
+                                    } finally {
+                                      if (mounted) {
+                                        setState(() {
+                                          isLoading = false;
+                                        });
+                                      }
+                                    }
+                                  },
+                            child: isLoading
+                                ? const SizedBox(
+                                    height: 24,
+                                    width: 24,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                    ),
+                                  )
+                                : const Text('Login'),
                           ),
                         ),
                         TextButton(
@@ -130,6 +160,29 @@ class _LoginScreenState extends State<LoginScreen> {
                           },
 
                           child: const Text('Forgot Password?'),
+                        ),
+                        const SizedBox(height: 4),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Text(
+                              'Don\'t have an account? ',
+                              style: Theme.of(context).textTheme.bodyMedium,
+                            ),
+                            GestureDetector(
+                              onTap: () => context.go('/signup'),
+                              child: Text(
+                                'Sign Up',
+                                style: Theme.of(context)
+                                    .textTheme
+                                    .bodyMedium
+                                    ?.copyWith(
+                                      color: colorScheme.primary,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                              ),
+                            ),
+                          ],
                         ),
                       ],
                     ),

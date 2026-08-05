@@ -126,6 +126,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                         count: pendingCount,
                         icon: Icons.pending_actions,
                         color: AppColors.info,
+                        onTap: () {
+                          ref.read(taskFilterProvider.notifier).setShowCompleted(false);
+                          context.go('/tasks');
+                        },
                       ),
                     ),
                     const SizedBox(width: 12),
@@ -135,6 +139,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                         count: completedCount,
                         icon: Icons.check_circle_outline,
                         color: AppColors.success,
+                        onTap: () {
+                          ref.read(taskFilterProvider.notifier).setShowCompleted(true);
+                          context.go('/tasks');
+                        },
                       ),
                     ),
                   ],
@@ -148,6 +156,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                         count: overdueCount,
                         icon: Icons.warning_amber_rounded,
                         color: AppColors.error,
+                        onTap: () {
+                          ref.read(taskFilterProvider.notifier).setShowOverdue(true);
+                          context.go('/tasks');
+                        },
                       ),
                     ),
                     const SizedBox(width: 12),
@@ -157,6 +169,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                         count: notesCount,
                         icon: Icons.note_outlined,
                         color: AppColors.warning,
+                        onTap: () => context.go('/notes'),
                       ),
                     ),
                   ],
@@ -312,51 +325,58 @@ class _StatCard extends StatelessWidget {
   final int count;
   final IconData icon;
   final Color color;
+  final VoidCallback? onTap;
 
   const _StatCard({
     required this.label,
     required this.count,
     required this.icon,
     required this.color,
+    this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
     return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Row(
-          children: [
-            Container(
-              width: 42,
-              height: 42,
-              decoration: BoxDecoration(
-                color: color.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(12),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(12),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Row(
+            children: [
+              Container(
+                width: 42,
+                height: 42,
+                decoration: BoxDecoration(
+                  color: color.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(icon, color: color, size: 22),
               ),
-              child: Icon(icon, color: color, size: 22),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    '$count',
-                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                          fontWeight: FontWeight.w700,
-                        ),
-                  ),
-                  Text(
-                    label,
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: AppColors.textSecondary,
-                        ),
-                  ),
-                ],
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      '$count',
+                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                            fontWeight: FontWeight.w700,
+                          ),
+                    ),
+                    Text(
+                      label,
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                            color: AppColors.textSecondary,
+                          ),
+                    ),
+                  ],
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );

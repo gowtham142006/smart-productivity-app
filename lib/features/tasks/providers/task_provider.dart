@@ -10,12 +10,14 @@ import '../../../services/notification_service.dart';
 
 class TaskFilter {
   final bool? showCompleted;
+  final bool showOverdue;
   final String? priority;
   final String? categoryId;
   final String sortBy;
 
   const TaskFilter({
     this.showCompleted,
+    this.showOverdue = false,
     this.priority,
     this.categoryId,
     this.sortBy = 'created_at',
@@ -23,6 +25,7 @@ class TaskFilter {
 
   TaskFilter copyWith({
     bool? showCompleted,
+    bool? showOverdue,
     String? priority,
     String? categoryId,
     String? sortBy,
@@ -34,6 +37,7 @@ class TaskFilter {
       showCompleted: clearCompleted
           ? null
           : (showCompleted ?? this.showCompleted),
+      showOverdue: showOverdue ?? this.showOverdue,
       priority: clearPriority ? null : (priority ?? this.priority),
       categoryId: clearCategory ? null : (categoryId ?? this.categoryId),
       sortBy: sortBy ?? this.sortBy,
@@ -63,9 +67,17 @@ class TaskFilterNotifier extends Notifier<TaskFilter> {
 
   void setShowCompleted(bool? show) {
     if (show == null) {
-      state = state.copyWith(clearCompleted: true);
+      state = state.copyWith(clearCompleted: true, showOverdue: false);
     } else {
-      state = state.copyWith(showCompleted: show);
+      state = state.copyWith(showCompleted: show, showOverdue: false);
+    }
+  }
+
+  void setShowOverdue(bool show) {
+    if (show) {
+      state = state.copyWith(showOverdue: true, clearCompleted: true);
+    } else {
+      state = state.copyWith(showOverdue: false);
     }
   }
 
@@ -292,8 +304,15 @@ final taskListProvider = Provider<AsyncValue<List<TaskModel>>>((ref) {
   return allTasksAsync.whenData((tasks) {
     var filtered = List<TaskModel>.from(tasks);
 
-    // Filter by completed status
-    if (filters.showCompleted != null) {
+    // Filter by overdue (takes precedence over showCompleted)
+    if (filters.showOverdue) {
+      final now = DateTime.now();
+      filtered = filtered
+          .where((t) =>
+              t.dueDate != null && t.dueDate!.isBefore(now) && !t.isCompleted)
+          .toList();
+    } else if (filters.showCompleted != null) {
+      // Filter by completed status
       filtered = filtered
           .where((t) => t.isCompleted == filters.showCompleted)
           .toList();

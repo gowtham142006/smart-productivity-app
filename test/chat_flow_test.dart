@@ -5,10 +5,10 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart' as supabase;
 import 'package:google_generative_ai/google_generative_ai.dart' as gemini;
-import 'package:ai_productivity_app/features/chat/providers/chat_provider.dart';
-import 'package:ai_productivity_app/core/providers/core_providers.dart';
-import 'package:ai_productivity_app/features/chat/domain/chat_repository.dart';
-import 'package:ai_productivity_app/services/gemini_service.dart';
+import 'package:smart_productivity_app/features/chat/providers/chat_provider.dart';
+import 'package:smart_productivity_app/core/providers/core_providers.dart';
+import 'package:smart_productivity_app/features/chat/domain/chat_repository.dart';
+import 'package:smart_productivity_app/services/gemini_service.dart';
 
 // Simple Mocks
 class MockChatRepository implements ChatRepository {

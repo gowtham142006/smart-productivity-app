@@ -1,11 +1,11 @@
 {
-    "name": "ai_productivity_app",
-    "short_name": "ai_productivity_app",
+    "name": "smart_productivity_app",
+    "short_name": "smart_productivity_app",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0175C2",
     "theme_color": "#0175C2",
-    "description": "A new Flutter project.",
+    "description": "A smart productivity Flutter application.",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [

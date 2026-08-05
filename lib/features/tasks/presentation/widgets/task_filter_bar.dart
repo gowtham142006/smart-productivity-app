@@ -44,6 +44,14 @@ class TaskFilterBar extends ConsumerWidget {
                     .setShowCompleted(true),
               ),
               const SizedBox(width: 8),
+              _FilterChip(
+                label: 'Overdue',
+                isSelected: filter.showOverdue,
+                onTap: () => ref
+                    .read(taskFilterProvider.notifier)
+                    .setShowOverdue(!filter.showOverdue),
+              ),
+              const SizedBox(width: 8),
               // Priority filter
               PopupMenuButton<String?>(
                 offset: const Offset(0, 40),

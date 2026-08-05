@@ -14,19 +14,13 @@ class AuthService {
     required String password,
     required String username,
   }) async {
-    final response = await _client.auth.signUp(
+    await _client.auth.signUp(
       email: email,
       password: password,
+      data: {'name': username},
     );
-
-    final user = response.user;
-
-    if (user != null) {
-      await _client.from('profiles').insert({
-        'id': user.id,
-        'name': username,
-      });
-    }
+    // Profile row is created on first verified login (see ProfileProvider).
+    // Storing username in user_metadata ensures it survives email verification.
   }
 
   Future<void> signIn({required String email, required String password}) async {

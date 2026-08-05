@@ -83,6 +83,8 @@ final authStateProvider = StreamProvider<AuthState>((ref) {
 });
 
 final currentUserProvider = Provider<User?>((ref) {
+  // Watch auth state stream so this provider rebuilds on login/logout/token refresh
+  ref.watch(authStateProvider);
   return ref.watch(supabaseClientProvider).auth.currentUser;
 });
 

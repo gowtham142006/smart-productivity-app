@@ -1,6 +1,6 @@
-# ai_productivity_app
+# smart_productivity_app
 
-A new Flutter project.
+A smart productivity Flutter application powered by AI, Supabase, and Riverpod.
 
 ## Getting Started
 
