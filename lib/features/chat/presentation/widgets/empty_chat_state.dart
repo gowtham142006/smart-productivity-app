@@ -15,6 +15,8 @@ class EmptyChatState extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(32),
@@ -51,7 +53,7 @@ class EmptyChatState extends StatelessWidget {
               'I\'m your AI productivity assistant.\nAsk me anything!',
               textAlign: TextAlign.center,
               style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: AppColors.textSecondary,
+                    color: colorScheme.onSurfaceVariant,
                     height: 1.5,
                   ),
             ),
@@ -64,15 +66,17 @@ class EmptyChatState extends StatelessWidget {
                 return ActionChip(
                   label: Text(
                     s,
-                    style: const TextStyle(
-                      color: AppColors.primary,
+                    style: TextStyle(
+                      color: colorScheme.primary,
                       fontSize: 13,
                       fontWeight: FontWeight.w500,
                     ),
                   ),
                   onPressed: () => onSuggestionTap(s),
-                  backgroundColor: AppColors.primary.withValues(alpha: 0.08),
-                  side: BorderSide.none,
+                  backgroundColor: colorScheme.primary.withValues(alpha: 0.08),
+                  side: BorderSide(
+                    color: colorScheme.primary.withValues(alpha: 0.2),
+                  ),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(20),
                   ),

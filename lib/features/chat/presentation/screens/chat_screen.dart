@@ -128,8 +128,8 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                       child: Column(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          const Icon(Icons.error_outline,
-                              size: 40, color: AppColors.error),
+                          Icon(Icons.error_outline,
+                              size: 40, color: Theme.of(context).colorScheme.error),
                           const SizedBox(height: 12),
                           const Text('Failed to load messages'),
                           const SizedBox(height: 12),
@@ -238,7 +238,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                         'No conversations yet',
                         style:
                             Theme.of(context).textTheme.bodyMedium?.copyWith(
-                                  color: AppColors.textTertiary,
+                                  color: Theme.of(context).colorScheme.onSurfaceVariant,
                                 ),
                       ),
                     );
@@ -298,8 +298,8 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                             Icons.chat_outlined,
                             size: 20,
                             color: isActive
-                                ? AppColors.primary
-                                : AppColors.textTertiary,
+                                ? Theme.of(context).colorScheme.primary
+                                : Theme.of(context).colorScheme.onSurfaceVariant,
                           ),
                           title: Text(
                             convo.title,

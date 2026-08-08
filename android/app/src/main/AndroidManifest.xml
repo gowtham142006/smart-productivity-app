@@ -29,6 +29,13 @@
                 <action android:name="android.intent.action.MAIN"/>
                 <category android:name="android.intent.category.LAUNCHER"/>
             </intent-filter>
+            <!-- Deep link intent filter for Supabase auth callbacks and password reset -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="smartproductivity" />
+            </intent-filter>
         </activity>
 
         <!-- Required receiver that actually fires the notification at the scheduled time -->

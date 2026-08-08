@@ -6,6 +6,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../features/auth/presentation/screens/forgot_password_screen.dart';
 import '../features/auth/presentation/screens/login_screen.dart';
+import '../features/auth/presentation/screens/reset_password_screen.dart';
 import '../features/auth/presentation/screens/signup_screen.dart';
 import '../features/auth/presentation/screens/splash_screen.dart';
 import '../features/home/presentation/screens/home_screen.dart';
@@ -25,12 +26,25 @@ import 'shell_scaffold.dart';
 class GoRouterRefreshStream extends ChangeNotifier {
   GoRouterRefreshStream(Stream<AuthState> stream) {
     notifyListeners(); // initial evaluation
-    _subscription = stream.asBroadcastStream().listen((_) {
+    _subscription = stream.asBroadcastStream().listen((authState) {
+      if (authState.event == AuthChangeEvent.passwordRecovery) {
+        _isPasswordRecovery = true;
+      } else if (authState.event == AuthChangeEvent.signedOut) {
+        _isPasswordRecovery = false;
+      }
       notifyListeners();
     });
   }
 
   late final StreamSubscription<AuthState> _subscription;
+  bool _isPasswordRecovery = false;
+
+  bool get isPasswordRecovery => _isPasswordRecovery;
+
+  void clearPasswordRecovery() {
+    _isPasswordRecovery = false;
+    notifyListeners();
+  }
 
   @override
   void dispose() {
@@ -39,28 +53,41 @@ class GoRouterRefreshStream extends ChangeNotifier {
   }
 }
 
+final appRouterRefreshStream =
+    GoRouterRefreshStream(Supabase.instance.client.auth.onAuthStateChange);
+
 final GoRouter appRouter = GoRouter(
   initialLocation: '/',
-  refreshListenable:
-      GoRouterRefreshStream(Supabase.instance.client.auth.onAuthStateChange),
+  refreshListenable: appRouterRefreshStream,
   redirect: (context, state) {
     final session = Supabase.instance.client.auth.currentSession;
     final isLoggedIn = session != null;
-    final isAuthRoute = state.matchedLocation == '/login' ||
-        state.matchedLocation == '/signup' ||
-        state.matchedLocation == '/forgot-password' ||
-        state.matchedLocation == '/';
+    final matched = state.matchedLocation;
 
-    // Not logged in and trying to access protected route
+    // 1. Password recovery mode takes priority: keep user on /reset-password until updated/logged out
+    if (appRouterRefreshStream.isPasswordRecovery) {
+      if (matched != '/reset-password') {
+        return '/reset-password';
+      }
+      return null;
+    }
+
+    final isAuthRoute = matched == '/login' ||
+        matched == '/signup' ||
+        matched == '/forgot-password' ||
+        matched == '/reset-password' ||
+        matched == '/';
+
+    // 2. Not logged in and trying to access protected route -> go to /login
     if (!isLoggedIn && !isAuthRoute) {
       return '/login';
     }
 
-    // Logged in and on auth route → go to home
+    // 3. Logged in and on an auth route (except /reset-password) -> go to /home
     if (isLoggedIn &&
-        (state.matchedLocation == '/login' ||
-            state.matchedLocation == '/signup' ||
-            state.matchedLocation == '/')) {
+        (matched == '/login' ||
+            matched == '/signup' ||
+            matched == '/')) {
       return '/home';
     }
 
@@ -83,6 +110,10 @@ final GoRouter appRouter = GoRouter(
     GoRoute(
       path: '/forgot-password',
       builder: (context, state) => const ForgotPasswordScreen(),
+    ),
+    GoRoute(
+      path: '/reset-password',
+      builder: (context, state) => const ResetPasswordScreen(),
     ),
 
     // Main app routes with bottom navigation (Decision #3: Notes in nav)

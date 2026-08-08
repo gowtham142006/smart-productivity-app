@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import '../../../../core/theme/app_colors.dart';
 
 class ChatInputBar extends StatefulWidget {
   final bool isGenerating;
@@ -40,6 +39,8 @@ class _ChatInputBarState extends State<ChatInputBar> {
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+
     return Container(
       padding: EdgeInsets.only(
         left: 16,
@@ -53,7 +54,7 @@ class _ChatInputBarState extends State<ChatInputBar> {
         color: Theme.of(context).scaffoldBackgroundColor,
         border: Border(
           top: BorderSide(
-            color: Colors.grey.shade200,
+            color: Theme.of(context).dividerColor,
             width: 1,
           ),
         ),
@@ -76,7 +77,7 @@ class _ChatInputBarState extends State<ChatInputBar> {
                     ? 'AI is thinking...'
                     : 'Ask me anything...',
                 filled: true,
-                fillColor: AppColors.surfaceVariant,
+                fillColor: colorScheme.surfaceContainerHighest,
                 contentPadding: const EdgeInsets.symmetric(
                   horizontal: 16,
                   vertical: 12,
@@ -92,7 +93,7 @@ class _ChatInputBarState extends State<ChatInputBar> {
                 focusedBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(24),
                   borderSide:
-                      const BorderSide(color: AppColors.primary, width: 1.5),
+                      BorderSide(color: colorScheme.primary, width: 1.5),
                 ),
               ),
             ),
@@ -105,24 +106,24 @@ class _ChatInputBarState extends State<ChatInputBar> {
               icon: AnimatedSwitcher(
                 duration: const Duration(milliseconds: 200),
                 child: widget.isGenerating
-                    ? const SizedBox(
+                    ? SizedBox(
                         width: 20,
                         height: 20,
                         child: CircularProgressIndicator(
                           strokeWidth: 2,
-                          color: AppColors.primary,
+                          color: colorScheme.primary,
                         ),
                       )
                     : Icon(
                         Icons.send_rounded,
                         color: _canSend
-                            ? AppColors.primary
-                            : AppColors.textTertiary,
+                            ? colorScheme.primary
+                            : colorScheme.onSurfaceVariant,
                       ),
               ),
               style: IconButton.styleFrom(
                 backgroundColor:
-                    _canSend ? AppColors.primary.withValues(alpha: 0.1) : null,
+                    _canSend ? colorScheme.primary.withValues(alpha: 0.1) : null,
                 shape: const CircleBorder(),
               ),
             ),

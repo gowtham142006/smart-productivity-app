@@ -224,6 +224,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
                                           email: emailController.text.trim(),
                                           password: passwordController.text,
                                           username: usernameController.text.trim(),
+                                          emailRedirectTo: 'smartproductivity://auth-callback',
                                         );
 
                                         debugPrint('Signup Success');
