@@ -115,17 +115,37 @@ The Home Dashboard brings together progress, current streaks, AI planning, upcom
 
 ---
 
-## 🖼️ Screenshots
+## 🖼️ Application Screenshots
 
-### Login
+### 🏠 Home Dashboard
+![Home Dashboard](assets/screenshots/home.png)
 
-![Login Screen](assets/screenshots/login-dark.png)
+### 🤖 AI Chat
+![AI Chat](assets/screenshots/ai-chat.png)
 
-### Sign Up
+### ✅ Task Management
+![Tasks](assets/screenshots/tasks.png)
 
-![Sign Up Screen](assets/screenshots/signup-dark.png)
+### 🔥 Habit Tracking
+![Habits](assets/screenshots/habits.png)
 
-> Additional Home, AI Chat, Tasks, Habits, Calendar, Profile, and Notification screenshots can be added under `assets/screenshots/`.
+### 📅 Calendar
+![Calendar](assets/screenshots/calendar.png)
+
+### ⏱️ Pomodoro
+![Pomodoro](assets/screenshots/pomodoro.png)
+
+### 📊 Analytics
+![Analytics](assets/screenshots/analytics.png)
+
+### 👤 Profile
+![Profile](assets/screenshots/profile.png)
+
+### 🔐 Authentication
+
+| Login | Sign Up |
+|---|---|
+| ![Login](assets/screenshots/login-dark.png) | ![Sign Up](assets/screenshots/signup-dark.png) |
 
 ---
 
