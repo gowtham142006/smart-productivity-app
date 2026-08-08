@@ -36,18 +36,18 @@ class DailyPlanCard extends ConsumerWidget {
         ),
         clipBehavior: Clip.antiAlias,
         child: planAsync.when(
-          loading: () => const Padding(
-            padding: EdgeInsets.all(24.0),
+          loading: () => Padding(
+            padding: const EdgeInsets.all(24.0),
             child: Center(
               child: Column(
                 children: [
-                  CircularProgressIndicator(strokeWidth: 3),
-                  SizedBox(height: 16),
+                  const CircularProgressIndicator(strokeWidth: 3),
+                  const SizedBox(height: 16),
                   Text(
                     'Crafting your daily schedule...',
                     style: TextStyle(
                       fontWeight: FontWeight.w600,
-                      color: AppColors.textSecondary,
+                      color: isDark ? AppColors.darkTextSecondary : AppColors.textSecondary,
                     ),
                   ),
                 ],
@@ -60,15 +60,21 @@ class DailyPlanCard extends ConsumerWidget {
               children: [
                 const Icon(Icons.error_outline_rounded, color: AppColors.error, size: 36),
                 const SizedBox(height: 8),
-                const Text(
+                Text(
                   'Failed to generate plan',
-                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 16,
+                    color: isDark ? AppColors.darkTextPrimary : AppColors.textPrimary,
+                  ),
                 ),
                 const SizedBox(height: 4),
                 Text(
                   error.toString().replaceAll('Exception: ', ''),
                   textAlign: TextAlign.center,
-                  style: AppTextStyles.bodySmall,
+                  style: AppTextStyles.bodySmall.copyWith(
+                    color: isDark ? AppColors.darkTextSecondary : AppColors.textSecondary,
+                  ),
                 ),
                 const SizedBox(height: 16),
                 ElevatedButton.icon(
@@ -108,6 +114,7 @@ class DailyPlanCard extends ConsumerWidget {
                                 'AI Daily Planner',
                                 style: AppTextStyles.cardTitle.copyWith(
                                   fontWeight: FontWeight.bold,
+                                  color: isDark ? AppColors.darkTextPrimary : AppColors.textPrimary,
                                 ),
                               ),
                               Text(
@@ -153,23 +160,24 @@ class DailyPlanCard extends ConsumerWidget {
                   Row(
                     children: [
                       Container(
-                        padding: const EdgeInsets.all(8),
-                        decoration: BoxDecoration(
-                          color: AppColors.primary.withValues(alpha: 0.1),
-                          shape: BoxShape.circle,
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: AppColors.primary.withValues(alpha: 0.1),
+                            shape: BoxShape.circle,
+                          ),
+                          child: const Icon(
+                            Icons.auto_awesome,
+                            color: AppColors.primary,
+                            size: 20,
+                          ),
                         ),
-                        child: const Icon(
-                          Icons.auto_awesome,
-                          color: AppColors.primary,
-                          size: 20,
-                        ),
-                      ),
                       const SizedBox(width: 12),
                       Expanded(
                         child: Text(
                           'My AI Daily Plan',
                           style: AppTextStyles.cardTitle.copyWith(
                             fontWeight: FontWeight.bold,
+                            color: isDark ? AppColors.darkTextPrimary : AppColors.textPrimary,
                           ),
                         ),
                       ),
@@ -179,7 +187,11 @@ class DailyPlanCard extends ConsumerWidget {
                         tooltip: 'Regenerate plan',
                       ),
                       IconButton(
-                        icon: const Icon(Icons.clear_rounded, size: 20),
+                        icon: Icon(
+                          Icons.clear_rounded,
+                          size: 20,
+                          color: isDark ? AppColors.darkTextSecondary : AppColors.textSecondary,
+                        ),
                         onPressed: () => ref.read(dailyPlanProvider.notifier).clearPlan(),
                         tooltip: 'Clear plan',
                       ),

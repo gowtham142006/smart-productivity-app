@@ -214,6 +214,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
                                   ? null
                                   : () async {
                                       if (!_formKey.currentState!.validate()) return;
+                                      if (isLoading) return;
 
                                       setState(() {
                                         isLoading = true;
@@ -246,7 +247,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
                                           ScaffoldMessenger.of(context).showSnackBar(
                                             SnackBar(
                                               content: Text(
-                                                e.toString().replaceAll('Exception: ', ''),
+                                                AuthService.getErrorMessage(e),
                                               ),
                                             ),
                                           );
